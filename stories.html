@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-page="stories">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>حكايات البن | بن السعودي</title>
+  <meta name="description" content="بن السعودي: حبوب مختارة من الحبشة والبرازيل وكولومبيا والهند، محمّصة طازة ومطحونة على ذوقك.">
+  <meta name="theme-color" content="#0E0A07">
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/book.css">
+</head>
+<body>
+  <header class="nav" id="siteNav"></header>
+
+  <main>
+    <section class="page-head page-head--book">
+      <div class="container">
+        <p class="eyebrow" data-i18n="stories.eyebrow"></p>
+        <h1 data-i18n="stories.title"></h1>
+        <p data-i18n="stories.lead"></p>
+      </div>
+    </section>
+
+    <!-- news ribbon: paused for now. To bring it back, add <div class="ticker" id="ticker"></div> here (news lines live in js/content.js) -->
+
+    <section class="book-stage" id="bookStage">
+      <svg class="book-decor" id="bookDecor" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="book" id="book"></div>
+      <div class="book-controls">
+        <button class="book-btn book-btn--prev" id="bookPrev" type="button" data-i18n-label="book.prev">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="book-count" id="bookCount" aria-live="polite"></span>
+        <button class="book-btn book-btn--next" id="bookNext" type="button" data-i18n-label="book.next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <p class="book-hint" data-i18n="book.hint"></p>
+    </section>
+  </main>
+
+  <footer class="footer" id="siteFooter"></footer>
+
+  <script src="js/content.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/beans.js"></script>
+  <script src="js/book.js"></script>
+</body>
+</html>

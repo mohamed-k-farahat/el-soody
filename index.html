@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-page="home">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>بن السعودي | الأفضل .. الأنقى .. الأعلى جودة</title>
+  <meta name="description" content="بن السعودي: حبوب مختارة من الحبشة والبرازيل وكولومبيا والهند، محمّصة طازة ومطحونة على ذوقك.">
+  <meta name="theme-color" content="#0E0A07">
+  <meta property="og:title" content="بن السعودي | El Soody Coffee">
+  <meta property="og:description" content="الأفضل .. الأنقى .. الأعلى جودة">
+  <meta property="og:image" content="media/sign-close.jpg">
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav" id="siteNav"></header>
+
+  <main>
+    <section class="hero">
+      <div class="hero__inner container">
+        <div class="hero__text">
+          <h1 class="hero__title">
+            <span data-i18n="hero.title1">قهوة</span>
+            <span class="accent" data-i18n="hero.title2">ليها حكاية</span>
+          </h1>
+          <p class="hero__tagline" data-i18n="hero.tagline">الأفضل .. الأنقى .. الأعلى جودة</p>
+          <p class="hero__lead" data-i18n="hero.lead"></p>
+          <div class="hero__cta">
+            <a href="stories.html" class="btn btn--primary" data-i18n="hero.cta1">افتح كتاب الحكايات</a>
+            <a href="menu.html" class="btn btn--ghost" data-i18n="hero.cta2">شوف المنيو</a>
+          </div>
+        </div>
+        <div class="hero__media">
+          <div class="arch">
+            <video class="arch__video" autoplay muted loop playsinline preload="metadata" poster="media/hero-poster.jpg">
+              <source src="media/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <span class="hero__ornament orn" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- news ribbon: paused for now. To bring it back, add <div class="ticker" id="ticker"></div> here (news lines live in js/content.js) -->
+
+    <section class="section story">
+      <div class="container story__grid">
+        <figure class="story__photo reveal">
+          <img src="media/dispensers.jpg" alt="" data-i18n-alt="alt.dispensers" loading="lazy">
+        </figure>
+        <div class="story__text reveal">
+          <p class="eyebrow" data-i18n="story.eyebrow"></p>
+          <h2 class="h2" data-i18n="story.title"></h2>
+          <p data-i18n="story.p1"></p>
+          <p data-i18n="story.p2"></p>
+          <ul class="stats">
+            <li><strong>12+</strong><span data-i18n="story.stat1"></span></li>
+            <li><strong>3</strong><span data-i18n="story.stat2"></span></li>
+            <li><strong>7</strong><span data-i18n="story.stat3"></span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section explore">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="section__orn orn" aria-hidden="true"></span>
+          <p class="eyebrow" data-i18n="explore.eyebrow"></p>
+          <h2 class="h2" data-i18n="explore.title"></h2>
+        </header>
+        <div class="explore__grid">
+          <a class="xcard xcard--book reveal" href="stories.html">
+            <svg id="xcardBeans" viewBox="0 0 300 260" aria-hidden="true"></svg>
+            <h3 data-i18n="explore.stories.title"></h3>
+            <p data-i18n="explore.stories.text"></p>
+            <span class="xcard__go" data-i18n="explore.go"></span>
+          </a>
+          <a class="xcard reveal" href="menu.html">
+            <img src="media/counter.jpg" alt="" loading="lazy">
+            <h3 data-i18n="explore.menu.title"></h3>
+            <p data-i18n="explore.menu.text"></p>
+            <span class="xcard__go" data-i18n="explore.go"></span>
+          </a>
+          <a class="xcard reveal" href="shop.html">
+            <img src="media/sign-close.jpg" alt="" loading="lazy">
+            <h3 data-i18n="explore.shop.title"></h3>
+            <p data-i18n="explore.shop.text"></p>
+            <span class="xcard__go" data-i18n="explore.go"></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="soon">
+      <div class="container soon__inner reveal">
+        <span class="logo-mark logo-mark--lg" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow eyebrow--dark" data-i18n="soon.eyebrow"></p>
+          <h2 class="h2" data-i18n="soon.title"></h2>
+          <p data-i18n="soon.lead"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="siteFooter"></footer>
+
+  <script src="js/content.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/beans.js"></script>
+  <script>SoodyBeans.plate(document.getElementById('xcardBeans'), BEANS[0]);</script>
+</body>
+</html>

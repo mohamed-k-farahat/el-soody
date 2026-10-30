@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-page="menu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>المنيو | بن السعودي</title>
+  <meta name="description" content="بن السعودي: حبوب مختارة من الحبشة والبرازيل وكولومبيا والهند، محمّصة طازة ومطحونة على ذوقك.">
+  <meta name="theme-color" content="#0E0A07">
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav" id="siteNav"></header>
+
+  <main>
+    <section class="page-head" style="background-image: linear-gradient(180deg, rgba(14,10,7,.55), rgba(14,10,7,.92)), url('media/counter.jpg')">
+      <div class="container">
+        <p class="eyebrow" data-i18n="menu.eyebrow"></p>
+        <h1 data-i18n="menu.title"></h1>
+        <p data-i18n="menu.lead"></p>
+      </div>
+    </section>
+
+    <!-- news ribbon: paused for now. To bring it back, add <div class="ticker" id="ticker"></div> here (news lines live in js/content.js) -->
+
+    <section class="section menu">
+      <div class="container">
+        <!-- styled after the shop's printed menu board -->
+        <div class="board reveal">
+          <article class="board__panel board__panel--plain">
+            <header class="board__head">
+              <span class="bowl" aria-hidden="true"></span>
+              <h2 class="board__title" data-i18n="menu.tab.plain"></h2>
+            </header>
+            <table class="board__table" id="tablePlain"></table>
+            <p class="board__foot" data-i18n="menu.note.spice"></p>
+          </article>
+
+          <article class="board__panel board__panel--spiced">
+            <span class="board__word" aria-hidden="true">MENU</span>
+            <header class="board__head">
+              <span class="bowl" aria-hidden="true"></span>
+              <h2 class="board__title" data-i18n="menu.tab.spiced"></h2>
+            </header>
+            <table class="board__table" id="tableSpiced"></table>
+            <h3 class="board__sub" data-i18n="menu.tab.french"></h3>
+            <table class="board__table" id="tableFrench"></table>
+            <p class="board__flavors" data-i18n="menu.note.french"></p>
+          </article>
+        </div>
+        <p class="menu__fine" data-i18n="menu.fine"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="siteFooter"></footer>
+
+  <script src="js/content.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

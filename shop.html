@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-page="shop">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>المحل | بن السعودي</title>
+  <meta name="description" content="بن السعودي: حبوب مختارة من الحبشة والبرازيل وكولومبيا والهند، محمّصة طازة ومطحونة على ذوقك.">
+  <meta name="theme-color" content="#0E0A07">
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav" id="siteNav"></header>
+
+  <main>
+    <section class="section shop shop--film">
+      <div class="container film-wrap">
+        <div class="film-wrap__text reveal">
+          <p class="eyebrow" data-i18n="film.eyebrow"></p>
+          <h1 class="h2" data-i18n="film.title"></h1>
+          <p data-i18n="film.lead"></p>
+        </div>
+
+        <!-- Soody branded player (controls stay left to right in both languages, like a timeline) -->
+        <div class="player reveal" id="player" dir="ltr">
+          <video id="playerVideo" playsinline preload="metadata" poster="media/promo-poster.jpg">
+            <source src="media/promo.mp4" type="video/mp4">
+          </video>
+          <span class="player__mark logo-mark" aria-hidden="true"></span>
+          <button class="player__big" id="playerBig" type="button" data-i18n-label="player.play">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>
+          </button>
+          <div class="player__bar">
+            <button class="player__btn" id="playerToggle" type="button" data-i18n-label="player.play">
+              <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>
+              <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>
+            </button>
+            <span class="player__time" id="playerTime">0:00</span>
+            <div class="player__track" id="playerTrack" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-i18n-label="player.seek">
+              <span class="player__buffer" id="playerBuffer"></span>
+              <span class="player__fill" id="playerFill"></span>
+              <span class="player__thumb" id="playerThumb"></span>
+            </div>
+            <span class="player__time" id="playerDur">0:00</span>
+            <button class="player__btn" id="playerMute" type="button" data-i18n-label="player.mute">
+              <svg class="i-vol" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <svg class="i-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button class="player__btn" id="playerFull" type="button" data-i18n-label="player.full">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- shows only once shop details are filled in js/content.js -->
+    <section class="section visit" id="visit" hidden>
+      <div class="container">
+        <div class="visit__text">
+          <p class="eyebrow" data-i18n="visit.eyebrow"></p>
+          <h2 class="h2" data-i18n="visit.title"></h2>
+          <ul class="visit__info" id="visitInfo"></ul>
+          <div class="socials" id="socials"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="siteFooter"></footer>
+
+  <script src="js/content.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>
