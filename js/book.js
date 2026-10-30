@@ -29,6 +29,9 @@
   // flat page order: cover, intro, contents, then plate + story for every bean, then the end
   const plateIndex = (i) => 3 + i * 2;
 
+  // bean pictures are pre-rendered images (media/beans), much lighter for phones than live SVG
+  const beanImg = (b) => `<img class="beans-img" src="media/beans/${b.id}.webp" alt="" decoding="async" draggable="false">`;
+
   function roastLine(b) {
     if (!b.roasts.length) return `<span class="chip">${t('book.noRoast')}</span>`;
     return b.roasts.map((r) => `<span class="chip"><i class="dot dot--${r}"></i>${t('roast.' + r)}</span>`).join('');
@@ -56,7 +59,7 @@
           <h3 class="pg__h">${t('book.introTitle')}</h3>
           <p>${t('book.intro1')}</p>
           <p>${t('book.intro2')}</p>
-          <div class="intro__art">${SoodyBeans.plateMarkup(BEANS[6])}</div>
+          <div class="intro__art">${beanImg(BEANS[6])}</div>
           <p class="pg__sign">${t('book.intro3')}</p>
         </div>
         <span class="pg__num">${num(1)}</span>
@@ -87,7 +90,7 @@
             <p class="pg__eyebrow">${c.origin}</p>
             <h3 class="plate__name">${c.name}</h3>
             ${c.tag ? `<span class="plate__tag">${c.tag}</span>` : ''}
-            <div class="plate__art">${SoodyBeans.plateMarkup(b)}</div>
+            <div class="plate__art">${beanImg(b)}</div>
             <dl class="plate__facts">
               <div><dt>${t('book.notes')}</dt><dd>${c.notes}</dd></div>
               <div><dt>${t('book.roast')}</dt><dd class="chips">${roastLine(b)}</dd></div>
@@ -182,7 +185,7 @@
       }
       if (!animate) leaf.classList.add('no-anim');
       // only keep the pages next to the open spread on screen; the rest cost nothing to draw
-      const near = mode === 'double' ? i >= cur - 2 && i <= cur + 1 : i >= cur - 1 && i <= cur + 1;
+      const near = mode === 'double' ? i >= cur - 3 && i <= cur + 2 : i >= cur - 2 && i <= cur + 2;
       leaf.style.display = near ? '' : 'none';
     });
     if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => [...bookEl.children].forEach((l) => l.classList.remove('no-anim'))));
@@ -260,6 +263,7 @@
 
   /* ---------------- loose beans on the table ---------------- */
   function drawDecor() {
+    if (mode === 'single') { decor.innerHTML = ''; return; }
     const spots = [
       [70, 120, 0.9, 20], [150, 470, 0.75, 120], [40, 300, 0.6, 75], [110, 560, 0.55, 200],
       [930, 90, 0.8, 160], [880, 520, 0.9, 40], [960, 330, 0.6, 250], [850, 260, 0.5, 95],

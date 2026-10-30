@@ -115,7 +115,7 @@ html:lang(en) .cover__title { font-family: var(--font-en-display); font-weight: 
 
 /* intro */
 .intro__art { margin: auto 0 .4em; display: flex; justify-content: center; }
-.intro__art svg { width: 70%; }
+.intro__art .beans-img { width: 70%; height: auto; }
 .pg__sign { text-align: center; font-weight: 700; color: var(--orange-deep); }
 
 /* contents */
@@ -138,7 +138,7 @@ html:lang(en) .toc button { font-size: 4.1cqw; }
 html:lang(en) .plate__name { font-family: var(--font-en-display); font-weight: 700; font-size: 7.6cqw; }
 .plate__tag { margin-top: .6em; font-family: var(--font-body); font-size: 2.8cqw; font-weight: 700; color: #fff; background: var(--orange-deep); padding: .15em .9em; border-radius: 999px; }
 .plate__art { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
-.plate__art svg { width: 100%; max-height: 100%; }
+.plate__art .beans-img { width: 100%; height: 100%; object-fit: contain; }
 .plate__facts { margin: 0; width: 100%; display: grid; gap: 1.6cqh; border-top: 1px solid rgba(110,80,56,.25); padding-top: 2cqh; }
 .plate__facts div { display: grid; gap: .4cqh; }
 .plate__facts dt { font-family: var(--font-body); font-weight: 700; font-size: 2.9cqw; color: var(--orange-deep); }
@@ -180,8 +180,11 @@ html[dir="rtl"] .book-btn svg { transform: scaleX(-1); }
 .book-count { min-width: 5.5em; text-align: center; font-weight: 700; color: var(--cream); font-variant-numeric: tabular-nums; }
 .book-hint { position: relative; z-index: 2; margin: .8rem 0 0; font-size: .85rem; color: var(--cream-dim); opacity: .75; text-align: center; }
 
-/* phones: cheaper shadows while pages turn */
-.book--single .face { box-shadow: 0 10px 22px -12px rgba(0,0,0,.7); }
+/* phones: no shadows on the turning pages (one static shadow under the book instead), quicker turn */
+.book--single .face { box-shadow: none; }
+.book--single::after { content: ""; position: absolute; left: 6%; right: 6%; bottom: -16px; height: 32px; z-index: -1; background: radial-gradient(ellipse at center, rgba(0,0,0,.6), transparent 70%); }
+.book--single .leaf { transition-duration: .6s; }
+.book--single .leaf.is-flipped { transition: transform .6s cubic-bezier(.3, .1, .2, 1), visibility 0s .6s; }
 
 @media (prefers-reduced-motion: reduce) {
   .leaf, .book { transition: none !important; }
