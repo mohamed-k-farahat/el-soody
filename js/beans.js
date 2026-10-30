@@ -1,6 +1,7 @@
 /* =========================================================
    بن السعودي: realistic coffee beans drawn in SVG
-   (radial shading + surface grain + crease + highlight + cast shadow)
+   Shading, speckle, crease, shine and cast shadow are all plain
+   gradients and patterns (no SVG filters), so phones stay smooth.
    ========================================================= */
 const SoodyBeans = (() => {
   'use strict';
@@ -8,7 +9,10 @@ const SoodyBeans = (() => {
   const NS = 'http://www.w3.org/2000/svg';
   let defs = null;
 
-  // shared filters, created once per document
+  // a few fixed specks for the bean surface texture
+  const SPECKS = [[2, 3, 0.45], [11, 1.5, 0.3], [6, 8, 0.55], [17, 6, 0.3], [3, 15, 0.4], [13, 13, 0.5], [21, 11, 0.25], [8, 19, 0.3], [19, 18, 0.4], [1, 9, 0.25]];
+
+  // shared paint servers, created once per document
   function ensureDefs() {
     if (defs) return defs;
     const svg = document.createElementNS(NS, 'svg');
@@ -18,17 +22,22 @@ const SoodyBeans = (() => {
     svg.style.position = 'absolute';
     svg.innerHTML = `
       <defs>
-        <filter id="beanGrain" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/>
-          <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.05" result="a"/>
-          <feComposite in="SourceGraphic" in2="a" operator="in"/>
-        </filter>
-        <filter id="beanSoft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
-        <filter id="beanShadow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+        <radialGradient id="beanShadowG" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#140a04" stop-opacity=".55"/>
+          <stop offset=".6" stop-color="#140a04" stop-opacity=".25"/>
+          <stop offset="1" stop-color="#140a04" stop-opacity="0"/>
+        </radialGradient>
         <radialGradient id="beanRim" cx=".5" cy=".5" r=".5">
           <stop offset=".62" stop-color="#000" stop-opacity="0"/>
           <stop offset="1" stop-color="#000" stop-opacity=".5"/>
         </radialGradient>
+        <radialGradient id="beanShine" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#fff" stop-opacity=".42"/>
+          <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </radialGradient>
+        <pattern id="beanSpeckle" width="23" height="21" patternUnits="userSpaceOnUse" patternTransform="rotate(23)">
+          ${SPECKS.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#1b0d05" opacity=".16"/>`).join('')}
+        </pattern>
       </defs>`;
     document.body.appendChild(svg);
     defs = svg.querySelector('defs');
@@ -62,18 +71,16 @@ const SoodyBeans = (() => {
   // one bean, centered at (x, y)
   function bean(id, color, x, y, s = 1, rot = 0) {
     const gid = ensureGradient(id, color);
-    const dark = shade(color, -0.62);
-    const light = shade(color, 0.55);
     return `
       <g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">
-        <ellipse cx="6" cy="10" rx="31" ry="42" fill="#140a04" opacity=".5" filter="url(#beanShadow)"/>
+        <ellipse cx="7" cy="12" rx="38" ry="50" fill="url(#beanShadowG)"/>
         <ellipse rx="31" ry="43" fill="url(#${gid})"/>
-        <ellipse rx="31" ry="43" fill="#1b0d05" opacity=".24" filter="url(#beanGrain)"/>
+        <ellipse rx="31" ry="43" fill="url(#beanSpeckle)"/>
         <ellipse rx="31" ry="43" fill="url(#beanRim)"/>
-        <path d="${CREASE}" fill="none" stroke="${dark}" stroke-width="6" stroke-linecap="round" filter="url(#beanSoft)" opacity=".9"/>
+        <path d="${CREASE}" fill="none" stroke="${shade(color, -0.6)}" stroke-width="6.5" stroke-linecap="round" opacity=".45"/>
         <path d="${CREASE}" fill="none" stroke="${shade(color, -0.78)}" stroke-width="2" stroke-linecap="round"/>
-        <path d="${CREASE}" transform="translate(3.4 0)" fill="none" stroke="${light}" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
-        <ellipse cx="-13" cy="-18" rx="7" ry="17" transform="rotate(14 -13 -18)" fill="#fff" opacity=".26" filter="url(#beanSoft)"/>
+        <path d="${CREASE}" transform="translate(3.4 0)" fill="none" stroke="${shade(color, 0.55)}" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+        <ellipse cx="-13" cy="-18" rx="9" ry="20" transform="rotate(14 -13 -18)" fill="url(#beanShine)"/>
       </g>`;
   }
 

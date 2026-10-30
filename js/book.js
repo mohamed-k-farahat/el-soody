@@ -181,6 +181,9 @@
         leaf.style.zIndex = zFor(i);
       }
       if (!animate) leaf.classList.add('no-anim');
+      // only keep the pages next to the open spread on screen; the rest cost nothing to draw
+      const near = mode === 'double' ? i >= cur - 2 && i <= cur + 1 : i >= cur - 1 && i <= cur + 1;
+      leaf.style.display = near ? '' : 'none';
     });
     if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => [...bookEl.children].forEach((l) => l.classList.remove('no-anim'))));
 
@@ -263,7 +266,7 @@
       [500, 575, 0.5, 15], [560, 30, 0.45, 300],
     ];
     const pick = [BEANS[1], BEANS[0], BEANS[9], BEANS[6]];
-    decor.innerHTML = spots.map(([x, y, s, r], i) => SoodyBeans.bean(pick[i % pick.length].id, pick[i % pick.length].color, x, y, s, r)).join('');
+    decor.innerHTML = spots.slice(0, mode === 'double' ? spots.length : 5).map(([x, y, s, r], i) => SoodyBeans.bean(pick[i % pick.length].id, pick[i % pick.length].color, x, y, s, r)).join('');
   }
 
   /* ---------------- lifecycle ---------------- */

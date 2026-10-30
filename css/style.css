@@ -3,6 +3,7 @@
    Palette pulled from the brand assets (logo + printed menu)
    ========================================================= */
 :root {
+  color-scheme: dark;       /* stops phone browsers from auto-recoloring the page (turned the orange logo red) */
   --orange: #FD9A19;        /* logo orange */
   --orange-deep: #E07F0A;
   --gold: #9C8268;          /* muted mocha (no gold) */
@@ -512,6 +513,7 @@ html:lang(en) .xcard:hover .xcard__go::after { transform: translateX(5px); }
   .nav__links a::after { display: none; }
   .nav__actions { margin-inline-start: auto; }
   .nav.menu-open { background: rgba(14,10,7,.97); }
+  .nav.is-scrolled, .nav__links { backdrop-filter: none; background: rgba(14,10,7,.97); }
 }
 
 @media (max-width: 640px) {

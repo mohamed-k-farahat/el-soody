@@ -17,7 +17,7 @@ html:lang(en) { --font-book: "EB Garamond", Georgia, serif; }
   position: relative;
   display: flex; flex-direction: column; align-items: center;
   padding: clamp(28px, 5vw, 60px) 12px 34px;
-  background: url("../media/wood.svg") center / cover, #2c1a0f;
+  background: url("../media/wood.jpg") center / cover, #2c1a0f;
   overflow: hidden;
   min-height: 520px;
 }
@@ -43,6 +43,7 @@ html[dir="rtl"] .book--double.is-closed-back { transform: translateX(-25%); }
   width: var(--pw); height: 100%;
   transform-style: preserve-3d;
   transition: transform var(--turn);
+  will-change: transform;
   cursor: pointer;
 }
 .leaf.no-anim { transition: none; }
@@ -78,7 +79,7 @@ html[dir="rtl"] .face--back::after { background: linear-gradient(to right, rgba(
 .pg {
   position: absolute; inset: 0;
   container-type: size;
-  background: url("../media/paper.svg") center / cover, var(--paper);
+  background: url("../media/paper.jpg") center / cover, var(--paper);
   color: var(--ink);
   font-family: var(--font-book);
 }
@@ -91,10 +92,10 @@ html:lang(en) .pg p { font-size: 4.2cqw; line-height: 1.5; }
 html:lang(en) .pg__h { font-family: var(--font-en-display); font-weight: 700; font-size: 7.4cqw; }
 .pg__eyebrow { margin: 0 !important; font-family: var(--font-body); font-weight: 700; font-size: 3.2cqw !important; color: var(--orange-deep); text-align: center; letter-spacing: .02em; }
 html:lang(en) .pg__eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 2.6cqw !important; }
-.pg--blank { background: url("../media/paper.svg") center / cover, var(--paper); }
+.pg--blank { background: url("../media/paper.jpg") center / cover, var(--paper); }
 
 /* cover */
-.pg--cover { background: url("../media/leather.svg") center / cover, #24140b; color: var(--cream); }
+.pg--cover { background: url("../media/leather.jpg") center / cover, #24140b; color: var(--cream); }
 .cover__frame {
   position: absolute; inset: 5.5%;
   border: 1.5px solid rgba(253,154,25,.55);
@@ -169,7 +170,7 @@ html:lang(en) .story__body p:first-child::first-letter { float: left; font-famil
 .book-btn {
   width: 52px; height: 52px; border-radius: 50%;
   border: 1.5px solid rgba(243,230,211,.35); background: rgba(14,10,7,.55); color: var(--cream);
-  display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(6px);
+  display: grid; place-items: center; cursor: pointer;
   transition: background .2s, color .2s, border-color .2s, opacity .2s;
 }
 .book-btn svg { width: 22px; height: 22px; }
@@ -178,6 +179,9 @@ html[dir="rtl"] .book-btn svg { transform: scaleX(-1); }
 .book-btn:disabled { opacity: .3; cursor: default; }
 .book-count { min-width: 5.5em; text-align: center; font-weight: 700; color: var(--cream); font-variant-numeric: tabular-nums; }
 .book-hint { position: relative; z-index: 2; margin: .8rem 0 0; font-size: .85rem; color: var(--cream-dim); opacity: .75; text-align: center; }
+
+/* phones: cheaper shadows while pages turn */
+.book--single .face { box-shadow: 0 10px 22px -12px rgba(0,0,0,.7); }
 
 @media (prefers-reduced-motion: reduce) {
   .leaf, .book { transition: none !important; }
