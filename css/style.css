@@ -94,11 +94,16 @@ html:lang(en) .h2, html:lang(en) .h3 { font-weight: 700; letter-spacing: -.01em;
   width: 40px;
   aspect-ratio: 1284 / 1632;
   background: var(--orange);
-  -webkit-mask: url("../media/logo.png") center / contain no-repeat;
-          mask: url("../media/logo.png") center / contain no-repeat;
+  /* small sizes use a version with thicker lines so it shows the same solid orange as the text */
+  -webkit-mask: url("../media/logo-sm.png") center / contain no-repeat;
+          mask: url("../media/logo-sm.png") center / contain no-repeat;
   flex: none;
 }
-.logo-mark--lg { width: 120px; background: var(--black); }
+.logo-mark--lg {
+  width: 120px; background: var(--black);
+  -webkit-mask-image: url("../media/logo.png");
+          mask-image: url("../media/logo.png");
+}
 
 /* =========================================================
    NAV
