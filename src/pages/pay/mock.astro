@@ -1,0 +1,54 @@
+---
+// Local stand in for Paymob's checkout page (PAYMOB_MODE = "mock" only).
+// "Pay" builds a transaction like Paymob's, signs it, and sends it through the real webhook code path.
+import { getOrderByToken } from '../../lib/orders.js';
+import { paymobMode, signTransaction, verifyTransaction, applyTransaction } from '../../lib/paymob.js';
+import { href } from '../../lib/i18n.js';
+import { egp } from '../../lib/money.js';
+
+if (paymobMode() !== 'mock') return new Response('Not found', { status: 404 });
+
+const order = await getOrderByToken(Astro.url.searchParams.get('token'));
+if (!order) return new Response('Not found', { status: 404 });
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const ok = form.get('result') === 'success';
+  const obj = {
+    amount_cents: order.total, created_at: new Date().toISOString(), currency: 'EGP', error_occured: false,
+    has_parent_transaction: false, id: Date.now(), integration_id: 1, is_3d_secure: true, is_auth: false,
+    is_capture: false, is_refunded: false, is_standalone_payment: true, is_voided: false,
+    order: { id: order.paymob_order_id }, owner: 1, pending: false,
+    source_data: { pan: '2346', sub_type: 'MasterCard', type: 'card' }, success: ok,
+  };
+  const hmac = await signTransaction(obj);
+  if (await verifyTransaction(obj, hmac)) await applyTransaction(obj);
+  return Astro.redirect(href(order.lang, `/order/${order.token}`), 303);
+}
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Mock payment</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f4f6fb; color: #1d2433; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.08); width: min(380px, 90vw); text-align: center; }
+    .badge { display: inline-block; background: #fff3cd; color: #7a5b00; padding: .2rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+    h1 { font-size: 1.3rem; } .amount { font-size: 2rem; font-weight: 800; margin: .5rem 0 1.5rem; }
+    button { width: 100%; padding: .9rem; border: 0; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: .6rem; }
+    .ok { background: #1f7a4d; color: #fff; } .bad { background: #e9ecf3; color: #a3261b; }
+  </style>
+</head>
+<body>
+  <form class="card" method="post">
+    <span class="badge">TEST MODE, no real money</span>
+    <h1>Mock Paymob checkout, order {order.code}</h1>
+    <div class="amount">{egp(order.total, 'en')}</div>
+    <button class="ok" name="result" value="success">Pay (simulate success)</button>
+    <button class="bad" name="result" value="fail">Decline (simulate failure)</button>
+  </form>
+</body>
+</html>

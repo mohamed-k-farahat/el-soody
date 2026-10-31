@@ -1,0 +1,133 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getProduct, getItems, getGrinds, loc, SIZES, ROAST_ORDER } from '../lib/db.js';
+import { egp } from '../lib/money.js';
+import { imageUrl } from '../lib/images.js';
+
+const { lang, slug } = Astro.props;
+const tr = (k) => t(lang, k);
+
+// the route already returned 404 if the product is missing or has nothing on sale
+const product = await getProduct(slug);
+const items = await getItems({ productId: product.id });
+
+const grinds = product.kind === 'coffee' ? await getGrinds() : [];
+const name = loc(product, 'name', lang);
+const image = imageUrl(product.image);
+const site = Astro.site?.origin || Astro.url.origin;
+
+// everything the picker needs, small and price-only (the server re-checks on order)
+const data = {
+  items: items.map((i) => ({
+    id: i.id, section: i.section, roasts: i.roasts,
+    label: loc(i, 'label', lang),
+    prices: Object.fromEntries(SIZES.map((s) => [s, i.prices[s]]).filter(([, p]) => p != null)),
+    priceText: Object.fromEntries(SIZES.map((s) => [s, egp(i.prices[s], lang)])),
+  })),
+  sections: [...new Set(items.map((i) => i.section))],
+};
+const first = data.items[0];
+const firstSize = SIZES.find((s) => first.prices[s] != null);
+
+const allPrices = items.flatMap((i) => SIZES.map((s) => i.prices[s])).filter((p) => p != null);
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name,
+  description: loc(product, 'notes', lang) || loc(product, 'seo_desc', lang),
+  image: new URL(image, site).href,
+  brand: { '@type': 'Brand', name: t(lang, 'brand') },
+  offers: {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'EGP',
+    lowPrice: Math.min(...allPrices) / 100,
+    highPrice: Math.max(...allPrices) / 100,
+    offerCount: allPrices.length,
+    availability: 'https://schema.org/InStock',
+  },
+};
+const roastLabel = (r) => tr(`roast.${r}`);
+---
+<Base
+  lang={lang}
+  page="store"
+  title={loc(product, 'seo_title', lang) || `${name} | ${tr('brand')}`}
+  description={loc(product, 'seo_desc', lang) || [loc(product, 'origin', lang), loc(product, 'notes', lang)].filter(Boolean).join('. ')}
+  image={image}
+  structuredData={structuredData}
+>
+  <section class="product">
+    <div class="container product__grid">
+      <div class="product__media reveal">
+        <img class={product.image.startsWith('/media/beans/') ? '' : 'is-photo'} src={image} alt={name}>
+      </div>
+
+      <div class="reveal">
+        <a class="crumb" href={href(lang, '/store')}>{lang === 'ar' ? '→' : '←'} {tr('product.back')}</a>
+        {loc(product, 'origin', lang) && <p class="eyebrow">{loc(product, 'origin', lang)}</p>}
+        <h1>{name}</h1>
+        {loc(product, 'notes', lang) && <p class="product__notes">{loc(product, 'notes', lang)}</p>}
+        {product.in_book && <p><a class="product__story" href={href(lang, `/stories#${product.slug}`)}>{tr('product.story')}</a></p>}
+
+        <form class="buy-form" id="buyForm" data-product={JSON.stringify(data)} novalidate>
+          {data.sections.length > 1 && (
+            <fieldset class="pick">
+              <legend>{tr('product.style')}</legend>
+              <div class="pick__opts">
+                {data.sections.map((s, i) => (
+                  <label><input type="radio" name="section" value={s} checked={i === 0}><span>{tr(`section.${s}`)}</span></label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          <fieldset class="pick" id="pickChoice" hidden={!first.label}>
+            <legend>{tr('product.choice')}</legend>
+            <div class="pick__opts" id="choiceOpts"></div>
+          </fieldset>
+
+          <fieldset class="pick" id="pickRoast" hidden={!first.roasts.length}>
+            <legend>{tr('product.roast')}</legend>
+            <div class="pick__opts" id="roastOpts">
+              {ROAST_ORDER.filter((r) => items.some((i) => i.roasts.includes(r))).map((r) => (
+                <label><input type="radio" name="roast" value={r}><span><i class={`dot dot--${r}`}></i>{roastLabel(r)}</span></label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset class="pick">
+            <legend>{tr('product.size')}</legend>
+            <div class="pick__opts" id="sizeOpts">
+              {SIZES.map((s) => (
+                <label><input type="radio" name="size" value={s} checked={s === firstSize} disabled={first.prices[s] == null}><span>{tr(`size.${s}`)} <small>{data.items[0].priceText[s]}</small></span></label>
+              ))}
+            </div>
+          </fieldset>
+
+          {grinds.length > 0 && (
+            <div class="pick">
+              <label class="pick__label" for="grind">{tr('product.grind')}</label>
+              <select class="select" id="grind" name="grind">
+                {grinds.map((g, i) => <option value={g.id} selected={i === 1}>{loc(g, 'name', lang)}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div class="buy">
+            <span class="buy__price" id="buyPrice">{egp(first.prices[firstSize], lang)}</span>
+            <div class="qty" aria-label={tr('product.qty')}>
+              <button type="button" data-step="-1" aria-label={tr('cart.less')}>−</button>
+              <input id="qty" name="qty" type="number" inputmode="numeric" min="1" max="50" value="1" aria-label={tr('product.qty')}>
+              <button type="button" data-step="1" aria-label={tr('cart.more')}>+</button>
+            </div>
+            <button class="btn btn--primary" type="submit" id="addBtn">{tr('product.add')}</button>
+            <p class="buy__msg" id="buyMsg" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script slot="scripts" is:inline src="/js/product.js"></script>
+</Base>

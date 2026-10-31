@@ -1,0 +1,96 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getSettings } from '../lib/db.js';
+import { egp } from '../lib/money.js';
+import { paymobReady } from '../lib/paymob.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+const s = await getSettings();
+const online = s.online && paymobReady();
+const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
+---
+<Base lang={lang} page="store" title={`${tr('checkout.title')} | ${tr('brand')}`} noindex>
+  <section class="checkout">
+    <div class="container">
+      <h1>{tr('checkout.title')}</h1>
+
+      <p class="cart-empty" id="checkoutEmpty" hidden>{tr('checkout.empty')} <a class="btn btn--primary" href={href(lang, '/store')}>{tr('cart.browse')}</a></p>
+
+      <form class="checkout__grid" id="checkoutForm" novalidate data-order-href={href(lang, '/order/')}>
+        <div>
+          <div class="panel">
+            <h2>{tr('checkout.how')}</h2>
+            <div class="choice">
+              {s.pickup && (
+                <label>
+                  <input type="radio" name="fulfilment" value="pickup" checked>
+                  <span><b>{tr('checkout.pickup')}</b><small>{tr('checkout.pickupNote')}</small></span>
+                  <span class="fee">{tr('checkout.free')}</span>
+                </label>
+              )}
+              {s.delivery && (
+                <label>
+                  <input type="radio" name="fulfilment" value="delivery" checked={!s.pickup}>
+                  <span>
+                    <b>{tr('checkout.delivery')}</b>
+                    {area && <small>{area}</small>}
+                    {s.freeDeliveryOver > 0 && <small>{tr('checkout.freeOver')} {egp(s.freeDeliveryOver, lang)}</small>}
+                  </span>
+                  <span class="fee">{s.deliveryFee ? egp(s.deliveryFee, lang) : tr('checkout.free')}</span>
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>{tr('checkout.details')}</h2>
+            <div class="field">
+              <label for="name">{tr('checkout.name')}</label>
+              <input id="name" name="name" autocomplete="name" maxlength="80" required>
+              <span class="field__err" id="err-name"></span>
+            </div>
+            <div class="field">
+              <label for="phone">{tr('checkout.phone')}</label>
+              <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="01xxxxxxxxx" required>
+              <span class="field__err" id="err-phone"></span>
+            </div>
+            <div class="field" id="addressField" hidden>
+              <label for="address">{tr('checkout.address')}</label>
+              <textarea id="address" name="address" rows="2" autocomplete="street-address" maxlength="300"></textarea>
+              <span class="field__err" id="err-address"></span>
+            </div>
+            <div class="field">
+              <label for="notes">{tr('checkout.notes')}</label>
+              <textarea id="notes" name="notes" rows="2" maxlength="500"></textarea>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>{tr('checkout.pay')}</h2>
+            <div class="choice">
+              {s.cod && (
+                <label><input type="radio" name="payment" value="cod" checked><span><b>{tr('checkout.cod')}</b></span></label>
+              )}
+              {online && (
+                <label><input type="radio" name="payment" value="online" checked={!s.cod}><span><b>{tr('checkout.online')}</b><small>{tr('checkout.onlineNote')}</small></span></label>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel summary" aria-live="polite">
+          <h2>{tr('checkout.summary')}</h2>
+          <div id="summaryLines"></div>
+          <div class="summary__line" id="feeLine" hidden><span>{tr('checkout.deliveryFee')}</span><span id="feeText"></span></div>
+          <div class="summary__total"><span>{tr('checkout.total')}</span><span id="totalText"></span></div>
+          <button class="btn btn--primary place" type="submit" id="placeBtn">{tr('checkout.place')}</button>
+          <p class="form-err" id="formErr" role="alert"></p>
+        </aside>
+      </form>
+    </div>
+  </section>
+
+  <script slot="scripts" is:inline src="/js/checkout.js"></script>
+</Base>

@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getProducts, getItems, lowestPrice, loc } from '../lib/db.js';
+import { egp } from '../lib/money.js';
+import { imageUrl } from '../lib/images.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+
+const FILTERS = ['all', 'plain', 'spiced', 'french', 'other'];
+const type = FILTERS.includes(Astro.url.searchParams.get('type')) ? Astro.url.searchParams.get('type') : 'all';
+
+const [products, items] = await Promise.all([getProducts(), getItems()]);
+const byProduct = Object.groupBy(items, (i) => i.product_id);
+
+const cards = products
+  .map((p) => ({ p, items: byProduct[p.id] || [] }))
+  .filter(({ p, items }) => {
+    if (!items.length) return false;
+    if (type === 'all') return true;
+    if (type === 'other') return p.kind === 'other';
+    return items.some((i) => i.section === type);
+  })
+  .map(({ p, items }) => ({
+    slug: p.slug,
+    name: loc(p, 'name', lang),
+    origin: loc(p, 'origin', lang),
+    notes: loc(p, 'notes', lang),
+    tag: loc(p, 'tag', lang),
+    image: imageUrl(p.image),
+    photo: !p.image.startsWith('/media/beans/'),
+    from: egp(lowestPrice(items), lang),
+  }));
+
+const filterHref = (f) => href(lang, f === 'all' ? '/store' : `/store?type=${f}`);
+const filterLabel = (f) => (f === 'all' ? tr('store.all') : tr(`section.${f}`));
+---
+<Base lang={lang} page="store">
+  <section class="page-head page-head--book">
+    <div class="container">
+      <p class="eyebrow">{tr('store.eyebrow')}</p>
+      <h1>{tr('store.title')}</h1>
+      <p>{tr('store.lead')}</p>
+    </div>
+  </section>
+
+  <section class="section store">
+    <div class="container">
+      <nav class="filters" aria-label={tr('store.eyebrow')}>
+        {FILTERS.map((f) => <a href={filterHref(f)} aria-current={f === type ? 'true' : undefined}>{filterLabel(f)}</a>)}
+      </nav>
+
+      {cards.length === 0 && <p class="cart-empty">{tr('store.empty')}</p>}
+      <div class="pgrid">
+        {cards.map((c) => (
+          <a class="pcard reveal" href={href(lang, `/store/${c.slug}`)}>
+            {c.tag && <span class="pcard__tag">{c.tag}</span>}
+            <div class="pcard__img"><img class={c.photo ? 'is-photo' : ''} src={c.image} alt={c.name} loading="lazy" decoding="async"></div>
+            <div class="pcard__body">
+              {c.origin && <span class="pcard__origin">{c.origin}</span>}
+              <h2 class="pcard__name">{c.name}</h2>
+              {c.notes && <p class="pcard__notes">{c.notes}</p>}
+              <div class="pcard__foot">
+                <span class="pcard__price"><small>{tr('store.from')}</small>{c.from}</span>
+                <span class="pcard__cta">{tr('store.choose')}</span>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>

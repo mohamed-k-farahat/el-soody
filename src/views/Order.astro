@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getSettings } from '../lib/db.js';
+import { getOrderByToken } from '../lib/orders.js';
+import { verifyRedirect, applyTransaction } from '../lib/paymob.js';
+import { egp } from '../lib/money.js';
+
+const { lang, token } = Astro.props;
+const tr = (k) => t(lang, k);
+
+// Coming back from Paymob: the return link is signed, so it can update the order right away
+// (the webhook does the same, whichever arrives first).
+if (Astro.url.searchParams.has('hmac')) {
+  const txn = await verifyRedirect(Astro.url.searchParams);
+  if (txn) await applyTransaction(txn);
+}
+
+const order = await getOrderByToken(token);
+const settings = await getSettings();
+const sizeLabel = (g) => tr(`size.${g}`);
+
+let mark = '✓';
+let note = tr('order.thanks');
+if (order?.payment_method === 'online') {
+  if (order.payment_status === 'paid') note = `${tr('order.paid')} ${tr('order.thanks')}`;
+  else if (order.payment_status === 'failed') { mark = '!'; note = tr('order.payFailed'); }
+  else if (order.payment_status === 'pending') { mark = '…'; note = tr('order.payPending'); }
+}
+const waText = order ? encodeURIComponent(`${lang === 'ar' ? 'طلب رقم' : 'Order'} ${order.code}`) : '';
+const waLink = settings.shop_whatsapp ? `https://wa.me/${settings.shop_whatsapp}?text=${waText}` : '';
+---
+<Base lang={lang} page="store" title={`${order ? order.code : tr('order.notFound')} | ${tr('brand')}`} noindex>
+  <section class="order">
+    <div class="container">
+      {!order ? (
+        <div class="order__card"><h1>{tr('order.notFound')}</h1><a class="btn btn--primary" href={href(lang, '/store')}>{tr('cart.browse')}</a></div>
+      ) : (
+        <div class="order__card">
+          <div class={`order__mark${mark === '✓' ? '' : ' order__mark--warn'}`} aria-hidden="true">{mark}</div>
+          <h1>{tr('order.title')}</h1>
+          <p class="order__code">{tr('order.code')}: <strong dir="ltr">{order.code}</strong></p>
+          <p>{note}</p>
+
+          <dl class="order__facts">
+            <div><dt>{tr('order.status')}</dt><dd>{tr(`status.${order.status}`)}</dd></div>
+            <div><dt>{tr('order.payment')}</dt><dd>{tr(`pay.${order.payment_method}`)}, {tr(`pay.${order.payment_status}`)}</dd></div>
+            <div><dt>{tr('checkout.how')}</dt><dd>{order.fulfilment === 'delivery' ? `${tr('checkout.delivery')}: ${order.address}` : tr('checkout.pickup')}</dd></div>
+            <div><dt>{tr('checkout.total')}</dt><dd>{egp(order.total, lang)}</dd></div>
+          </dl>
+
+          <div class="panel order__items">
+            <h2>{tr('order.items')}</h2>
+            {order.items.map((i) => (
+              <div class="summary__line"><span><b>{i.qty} × {i.name}</b><br>{[i.details, sizeLabel(i.size)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ')}</span><span>{egp(i.line_total, lang)}</span></div>
+            ))}
+            {order.delivery_fee > 0 && <div class="summary__line"><span>{tr('checkout.deliveryFee')}</span><span>{egp(order.delivery_fee, lang)}</span></div>}
+            <div class="summary__total"><span>{tr('checkout.total')}</span><span>{egp(order.total, lang)}</span></div>
+          </div>
+
+          <div class="order__actions">
+            {order.payment_method === 'online' && order.payment_status === 'failed' && order.status !== 'cancelled' && (
+              <form method="post" action={`/api/orders/${order.token}/pay`}><button class="btn btn--primary">{tr('order.retry')}</button></form>
+            )}
+            {waLink && <a class="btn btn--ghost" href={waLink} target="_blank" rel="noopener">{tr('order.whatsapp')}</a>}
+            <a class="btn btn--ghost" href={href(lang, '/store')}>{tr('cart.browse')}</a>
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</Base>

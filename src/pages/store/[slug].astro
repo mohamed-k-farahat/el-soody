@@ -1,0 +1,11 @@
+---
+import View from '../../views/Product.astro';
+import { getProduct, getItems } from '../../lib/db.js';
+
+const { slug } = Astro.params;
+const product = await getProduct(slug);
+if (!product || !(await getItems({ productId: product.id })).length) {
+  return new Response('Not found', { status: 404 });
+}
+---
+<View lang="ar" slug={slug} />
