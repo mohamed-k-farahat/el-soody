@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getMenu, loc } from '../lib/db.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+const menu = await getMenu();
+
+const sep = lang === 'ar' ? '، ' : ', ';
+const roastText = (roasts) => (roasts.length ? `( ${roasts.map((r) => tr(`roast.${r}`)).join(sep)} )` : '');
+const price = (p) => (p == null ? '' : String(p / 100));
+// French coffee rows are named by flavor; other rows by product
+const rowName = (row) => (row.section === 'french' ? `${loc(row, 'name', lang)}, ${loc(row, 'label', lang)}` : loc(row, 'name', lang));
+---
+<Base lang={lang} page="menu">
+  <section class="page-head" style="background-image: linear-gradient(180deg, rgba(14,10,7,.55), rgba(14,10,7,.92)), url('/media/counter.jpg')">
+    <div class="container">
+      <p class="eyebrow">{tr('menu.eyebrow')}</p>
+      <h1>{tr('menu.title')}</h1>
+      <p>{tr('menu.lead')}</p>
+    </div>
+  </section>
+
+  <section class="section menu">
+    <div class="container">
+      <!-- styled after the shop's printed menu board -->
+      <div class="board reveal">
+        {['plain', 'spiced'].map((section) => (
+          <article class={`board__panel board__panel--${section}`}>
+            {section === 'spiced' && <span class="board__word" aria-hidden="true">MENU</span>}
+            <header class="board__head">
+              <span class="bowl" aria-hidden="true"></span>
+              <h2 class="board__title">{tr(`menu.tab.${section}`)}</h2>
+            </header>
+            <table class="board__table">
+              <thead><tr><td></td><th scope="col">{tr('menu.col.eighth')}</th><th scope="col">{tr('menu.col.quarter')}</th><th scope="col">{tr('menu.col.kilo')}</th></tr></thead>
+              <tbody>
+                {menu[section].map((row) => (
+                  <tr>
+                    <th scope="row"><a href={href(lang, `/store/${row.slug}`)}>{rowName(row)}</a> <span class="roast">{roastText(row.roasts)}</span></th>
+                    <td class="p">{price(row.price_125)}</td>
+                    <td class="p">{price(row.price_250)}</td>
+                    <td class="p">{price(row.price_1000)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {section === 'plain' && <p class="board__foot">{tr('menu.note.spice')}</p>}
+            {section === 'spiced' && menu.french.length > 0 && (
+              <>
+                <h3 class="board__sub">{tr('menu.tab.french')}</h3>
+                <table class="board__table">
+                  <thead><tr><td></td><th scope="col">{tr('menu.col.eighth')}</th><th scope="col">{tr('menu.col.quarter')}</th><th scope="col">{tr('menu.col.kilo')}</th></tr></thead>
+                  <tbody>
+                    {menu.french.map((row) => (
+                      <tr>
+                        <th scope="row"><a href={href(lang, `/store/${row.slug}`)}>{loc(row, 'label', lang) || loc(row, 'name', lang)}</a></th>
+                        <td class="p">{price(row.price_125)}</td>
+                        <td class="p">{price(row.price_250)}</td>
+                        <td class="p">{price(row.price_1000)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </article>
+        ))}
+      </div>
+      <p class="menu__fine">{tr('menu.fine')}</p>
+    </div>
+  </section>
+</Base>

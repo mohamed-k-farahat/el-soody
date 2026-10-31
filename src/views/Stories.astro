@@ -1,0 +1,56 @@
+---
+import Base from '../layouts/Base.astro';
+import { t } from '../lib/i18n.js';
+import { getProducts, loc } from '../lib/db.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+
+// the book is built from the database: every active product marked "in book", in its sort order
+const beans = (await getProducts()).filter((p) => p.in_book).map((p) => ({
+  id: p.slug,
+  color: p.color,
+  roasts: p.roasts,
+  image: p.image.startsWith('r2:') ? `/img/${p.image.slice(3)}` : p.image,
+  [lang]: {
+    name: loc(p, 'name', lang),
+    origin: loc(p, 'origin', lang),
+    notes: loc(p, 'notes', lang),
+    story: p[`story_${lang}`].length ? p[`story_${lang}`] : p.story_ar,
+    pair: loc(p, 'tip', lang),
+    tag: loc(p, 'tag', lang),
+  },
+}));
+---
+<Base lang={lang} page="stories" bookFonts>
+  <link slot="head" rel="stylesheet" href="/css/book.css">
+
+  <section class="page-head page-head--book">
+    <div class="container">
+      <p class="eyebrow">{tr('stories.eyebrow')}</p>
+      <h1>{tr('stories.title')}</h1>
+      <p>{tr('stories.lead')}</p>
+    </div>
+  </section>
+
+  <section class="book-stage" id="bookStage">
+    <svg class="book-decor" id="bookDecor" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+    <div class="book" id="book"></div>
+    <div class="book-controls">
+      <button class="book-btn book-btn--prev" id="bookPrev" type="button" aria-label={tr('book.prev')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="book-count" id="bookCount" aria-live="polite"></span>
+      <button class="book-btn book-btn--next" id="bookNext" type="button" aria-label={tr('book.next')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <p class="book-hint">{tr('book.hint')}</p>
+  </section>
+
+  <Fragment slot="scripts">
+    <script is:inline define:vars={{ beans }}>window.BEANS = beans;</script>
+    <script is:inline src="/js/beans.js"></script>
+    <script is:inline src="/js/book.js"></script>
+  </Fragment>
+</Base>

@@ -1,0 +1,94 @@
+---
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+---
+<Base lang={lang} page="home">
+  <section class="hero">
+    <div class="hero__inner container">
+      <div class="hero__text">
+        <h1 class="hero__title">
+          <span>{tr('hero.title1')}</span>
+          <span class="accent">{tr('hero.title2')}</span>
+        </h1>
+        <p class="hero__tagline">{tr('hero.tagline')}</p>
+        <p class="hero__lead">{tr('hero.lead')}</p>
+        <div class="hero__cta">
+          <a href={href(lang, '/store')} class="btn btn--primary">{tr('cta.button')}</a>
+          <a href={href(lang, '/stories')} class="btn btn--ghost">{tr('hero.cta1')}</a>
+        </div>
+      </div>
+      <div class="hero__media">
+        <div class="arch">
+          <video class="arch__video" autoplay muted loop playsinline preload="metadata" poster="/media/hero-poster.jpg">
+            <source src="/media/hero.mp4" type="video/mp4">
+          </video>
+        </div>
+        <span class="hero__ornament orn" aria-hidden="true"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section story">
+    <div class="container story__grid">
+      <figure class="story__photo reveal">
+        <img src="/media/dispensers.jpg" alt={tr('alt.dispensers')} loading="lazy">
+      </figure>
+      <div class="story__text reveal">
+        <p class="eyebrow">{tr('story.eyebrow')}</p>
+        <h2 class="h2">{tr('story.title')}</h2>
+        <p>{tr('story.p1')}</p>
+        <p>{tr('story.p2')}</p>
+        <ul class="stats">
+          <li><strong>12+</strong><span>{tr('story.stat1')}</span></li>
+          <li><strong>3</strong><span>{tr('story.stat2')}</span></li>
+          <li><strong>7</strong><span>{tr('story.stat3')}</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section explore">
+    <div class="container">
+      <header class="section__head reveal">
+        <span class="section__orn orn" aria-hidden="true"></span>
+        <p class="eyebrow">{tr('explore.eyebrow')}</p>
+        <h2 class="h2">{tr('explore.title')}</h2>
+      </header>
+      <div class="explore__grid">
+        <a class="xcard xcard--book reveal" href={href(lang, '/stories')}>
+          <img class="xcard__beans" src="/media/beans/habashi.webp" alt="" loading="lazy">
+          <h3>{tr('explore.stories.title')}</h3>
+          <p>{tr('explore.stories.text')}</p>
+          <span class="xcard__go">{tr('explore.go')}</span>
+        </a>
+        <a class="xcard reveal" href={href(lang, '/store')}>
+          <img src="/media/bags.jpg" alt="" loading="lazy">
+          <h3>{tr('explore.store.title')}</h3>
+          <p>{tr('explore.store.text')}</p>
+          <span class="xcard__go">{tr('explore.go')}</span>
+        </a>
+        <a class="xcard reveal" href={href(lang, '/menu')}>
+          <img src="/media/counter.jpg" alt="" loading="lazy">
+          <h3>{tr('explore.menu.title')}</h3>
+          <p>{tr('explore.menu.text')}</p>
+          <span class="xcard__go">{tr('explore.go')}</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="soon">
+    <div class="container soon__inner reveal">
+      <span class="logo-mark logo-mark--lg" aria-hidden="true"></span>
+      <div>
+        <p class="eyebrow eyebrow--dark">{tr('cta.eyebrow')}</p>
+        <h2 class="h2">{tr('cta.title')}</h2>
+        <p>{tr('cta.lead')}</p>
+        <a class="btn btn--dark" href={href(lang, '/store')}>{tr('cta.button')}</a>
+      </div>
+    </div>
+  </section>
+</Base>

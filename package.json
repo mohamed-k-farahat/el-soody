@@ -1,0 +1,19 @@
+{
+  "name": "el-soody",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler dev",
+    "db:migrate": "wrangler d1 migrations apply el-soody-db --local",
+    "db:seed": "node scripts/seed.mjs && wrangler d1 execute el-soody-db --local --file=scripts/seed.sql"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "14.3.4",
+    "astro": "7.3.8"
+  },
+  "devDependencies": {
+    "wrangler": "^4.156.0"
+  }
+}

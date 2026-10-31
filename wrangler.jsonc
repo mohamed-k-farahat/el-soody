@@ -1,0 +1,27 @@
+{
+  // Cloudflare Worker that serves the El Soody site, store and admin
+  "name": "el-soody",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "el-soody-db",
+      "database_id": "00000000-0000-0000-0000-000000000000", // set at launch (wrangler d1 create)
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "el-soody-media" }
+  ],
+  "vars": {
+    // public site address, used for payment return links and SEO
+    "SITE_URL": "http://localhost:4321",
+    // "mock" runs a fake payment page locally; "test" / "live" talk to Paymob
+    "PAYMOB_MODE": "mock",
+    // Cloudflare Access (admin login). Filled in at launch.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  }
+  // Secrets (never in this file): PAYMOB_SECRET_KEY, PAYMOB_PUBLIC_KEY, PAYMOB_HMAC_SECRET, PAYMOB_INTEGRATION_IDS
+  // Locally they go in .dev.vars; in production: wrangler secret put <NAME>
+}

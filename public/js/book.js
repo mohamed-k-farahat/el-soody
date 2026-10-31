@@ -29,8 +29,9 @@
   // flat page order: cover, intro, contents, then plate + story for every bean, then the end
   const plateIndex = (i) => 3 + i * 2;
 
-  // bean pictures are pre-rendered images (media/beans), much lighter for phones than live SVG
-  const beanImg = (b) => `<img class="beans-img" src="media/beans/${b.id}.webp" alt="" decoding="async" draggable="false">`;
+  // bean pictures are pre-rendered images (media/beans) or photos uploaded in admin, much lighter for phones than live SVG
+  const beanImg = (b) => `<img class="beans-img" src="${b.image || `/media/beans/${b.id}.webp`}" alt="" decoding="async" draggable="false">`;
+  const introBean = BEANS.find((b) => b.id === 'malaki') || BEANS[0];
 
   function roastLine(b) {
     if (!b.roasts.length) return `<span class="chip">${t('book.noRoast')}</span>`;
@@ -59,7 +60,7 @@
           <h3 class="pg__h">${t('book.introTitle')}</h3>
           <p>${t('book.intro1')}</p>
           <p>${t('book.intro2')}</p>
-          <div class="intro__art">${beanImg(BEANS[6])}</div>
+          <div class="intro__art">${beanImg(introBean)}</div>
           <p class="pg__sign">${t('book.intro3')}</p>
         </div>
         <span class="pg__num">${num(1)}</span>
@@ -117,7 +118,7 @@
           <span class="end__orn orn" aria-hidden="true"></span>
           <h3 class="pg__h">${t('book.endTitle')}</h3>
           <p>${t('book.endText')}</p>
-          <a class="btn btn--primary" href="menu.html">${t('book.endCta')}</a>
+          <a class="btn btn--primary" href="${window.SOODY.storeHref}">${t('book.endCta')}</a>
         </div>
       </div>`);
 
@@ -269,12 +270,11 @@
       [930, 90, 0.8, 160], [880, 520, 0.9, 40], [960, 330, 0.6, 250], [850, 260, 0.5, 95],
       [500, 575, 0.5, 15], [560, 30, 0.45, 300],
     ];
-    const pick = [BEANS[1], BEANS[0], BEANS[9], BEANS[6]];
+    const pick = [BEANS[1], BEANS[0], BEANS[9], BEANS[6]].filter(Boolean);
     decor.innerHTML = spots.slice(0, mode === 'double' ? spots.length : 5).map(([x, y, s, r], i) => SoodyBeans.bean(pick[i % pick.length].id, pick[i % pick.length].color, x, y, s, r)).join('');
   }
 
   /* ---------------- lifecycle ---------------- */
-  document.addEventListener('soody:lang', build);
 
   let resizeT;
   window.addEventListener('resize', () => {
@@ -282,7 +282,7 @@
     resizeT = setTimeout(() => (pickMode() !== mode ? build() : size()), 150);
   });
 
-  // deep link: stories.html#habashi opens that bean's spread
+  // deep link: /stories#habashi opens that bean's spread
   const linkedPage = () => {
     const i = BEANS.findIndex((b) => b.id === location.hash.slice(1));
     return i > -1 ? plateIndex(i) : null;

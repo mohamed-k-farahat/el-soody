@@ -1,0 +1,143 @@
+---
+// Shared shell for every public page: <head> with SEO tags, nav, cart drawer, footer.
+import { t, href, basePath, dir } from '../lib/i18n.js';
+import { STRINGS } from '../lib/strings.js';
+import { getSeo } from '../lib/db.js';
+
+const {
+  lang = 'ar',
+  page = '',            // nav key and seo_pages key
+  title,                // overrides the SEO title from the database
+  description,
+  image,
+  bookFonts = false,    // the story book uses two extra fonts
+  noindex = false,
+  structuredData = null,
+} = Astro.props;
+
+const tr = (k) => t(lang, k);
+const seo = page ? await getSeo(page) : {};
+const pageTitle = title || seo[`title_${lang}`] || tr('meta.title.home');
+const pageDesc = description || seo[`desc_${lang}`] || tr('meta.desc');
+const site = Astro.site?.origin || Astro.url.origin;
+const shareImage = new URL(image || seo.image || '/media/sign-close.jpg', site).href;
+
+const path = basePath(Astro.url.pathname);
+const canonical = new URL(href(lang, path), site).href;
+const other = lang === 'ar' ? 'en' : 'ar';
+
+const NAV = [
+  ['home', '/'],
+  ['stories', '/stories'],
+  ['menu', '/menu'],
+  ['store', '/store'],
+  ['shop', '/shop'],
+];
+
+// text the browser scripts need (cart, product picker, checkout)
+const clientPrefixes = ['cart.', 'product.', 'checkout.', 'size.', 'section.', 'roast.', 'book.', 'player.'];
+const clientStrings = Object.fromEntries(
+  Object.entries(STRINGS[lang]).filter(([k]) => clientPrefixes.some((p) => k.startsWith(p)))
+);
+const fonts = bookFonts
+  ? 'family=Amiri:wght@400;700&family=Cairo:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700'
+  : 'family=Cairo:wght@400;500;600;700&family=Lalezar&family=Fraunces:opsz,wght@9..144,500;9..144,700';
+---
+<!doctype html>
+<html lang={lang} dir={dir(lang)} data-page={page}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{pageTitle}</title>
+  <meta name="description" content={pageDesc}>
+  <meta name="theme-color" content="#0E0A07">
+  <meta name="color-scheme" content="dark">
+  {noindex && <meta name="robots" content="noindex">}
+  <link rel="canonical" href={canonical}>
+  <link rel="alternate" hreflang="ar" href={new URL(href('ar', path), site).href}>
+  <link rel="alternate" hreflang="en" href={new URL(href('en', path), site).href}>
+  <link rel="alternate" hreflang="x-default" href={new URL(href('ar', path), site).href}>
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content={tr('brand')}>
+  <meta property="og:title" content={pageTitle}>
+  <meta property="og:description" content={pageDesc}>
+  <meta property="og:image" content={shareImage}>
+  <meta property="og:url" content={canonical}>
+  <meta property="og:locale" content={lang === 'ar' ? 'ar_EG' : 'en_US'}>
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="/media/logo-sm.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href={`https://fonts.googleapis.com/css2?${fonts}&display=swap`} rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/store.css">
+  <slot name="head" />
+  {structuredData && <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+</head>
+<body>
+  <header class="nav" id="siteNav">
+    <div class="nav__inner container">
+      <a href={href(lang, '/')} class="nav__brand" aria-label={tr('brand')}>
+        <span class="logo-mark" aria-hidden="true"></span>
+        <span class="nav__name">{tr('brand')}</span>
+      </a>
+      <nav class="nav__links" id="navLinks" aria-label={tr('nav.label')}>
+        {NAV.map(([id, p]) => (
+          <a href={href(lang, p)} aria-current={id === page ? 'page' : undefined}>{tr(`nav.${id}`)}</a>
+        ))}
+      </nav>
+      <div class="nav__actions">
+        <a class="lang-btn" href={href(other, path)} hreflang={other} lang={other} aria-label={tr('lang.switch')}>
+          <span class="lang-btn__label">{tr('lang.label')}</span>
+        </a>
+        <button class="cart-btn" id="cartBtn" type="button" aria-label={tr('nav.cart')} aria-controls="cartDrawer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10V7a3 3 0 0 1 6 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="cart-btn__count" id="cartCount" hidden>0</span>
+        </button>
+        <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="navLinks" aria-label={tr('nav.label')}>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+
+  <footer class="footer" id="siteFooter">
+    <div class="container footer__inner">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <p class="footer__tag">{tr('hero.tagline')}</p>
+      <nav class="footer__links" aria-label={tr('nav.label')}>
+        {NAV.map(([id, p]) => <a href={href(lang, p)}>{tr(`nav.${id}`)}</a>)}
+        <a href={href(lang, '/policies')}>{tr('footer.policies')}</a>
+      </nav>
+      <p class="footer__copy">© {new Date().getFullYear()} {tr('brand')}</p>
+    </div>
+  </footer>
+
+  <div class="cart-drawer" id="cartDrawer" hidden>
+    <div class="cart-drawer__backdrop" data-cart-close></div>
+    <aside class="cart-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+      <header class="cart-drawer__head">
+        <h2 id="cartTitle">{tr('cart.title')}</h2>
+        <button class="cart-drawer__close" type="button" data-cart-close aria-label={tr('cart.close')}>×</button>
+      </header>
+      <div class="cart-drawer__body" id="cartLines"></div>
+      <footer class="cart-drawer__foot" id="cartFoot" hidden>
+        <div class="cart-drawer__sum"><span>{tr('cart.subtotal')}</span><strong id="cartSubtotal"></strong></div>
+        <a class="btn btn--primary cart-drawer__go" href={href(lang, '/checkout')}>{tr('cart.checkout')}</a>
+      </footer>
+    </aside>
+  </div>
+
+  <script is:inline type="application/json" id="soodyStrings" set:html={JSON.stringify(clientStrings)} />
+  <script is:inline define:vars={{ lang, storeHref: href(lang, '/store') }}>
+    window.SOODY = { lang, storeHref, strings: JSON.parse(document.getElementById('soodyStrings').textContent) };
+    window.SOODY.t = (k) => window.SOODY.strings[k] ?? k;
+  </script>
+  <script is:inline src="/js/site.js"></script>
+  <slot name="scripts" />
+</body>
+</html>
