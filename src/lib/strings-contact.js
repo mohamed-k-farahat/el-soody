@@ -6,7 +6,7 @@ export const CONTACT_STRINGS = {
     'footer.suggestions': 'اقتراحاتك',
     'footer.explore': 'اتفرج',
     'footer.help': 'محتاج حاجة؟',
-    'footer.city': 'طنطا، مصر',
+    'footer.rights': 'جميع الحقوق محفوظة',
 
     'contact.eyebrow': 'كلّمنا',
     'contact.title': 'إحنا قريبين منك',
@@ -66,7 +66,7 @@ export const CONTACT_STRINGS = {
     'footer.suggestions': 'Suggestions',
     'footer.explore': 'Explore',
     'footer.help': 'Need help?',
-    'footer.city': 'Tanta, Egypt',
+    'footer.rights': 'All rights reserved.',
 
     'contact.eyebrow': 'Contact us',
     'contact.title': 'We are close by',

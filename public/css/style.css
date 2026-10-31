@@ -345,7 +345,7 @@ html:lang(en) .footer__h { text-transform: uppercase; letter-spacing: .14em; fon
 .footer__branches b { color: var(--cream); font-weight: 700; }
 .footer__branches small { color: var(--mocha); font-weight: 400; font-size: .85rem; line-height: 1.5; }
 .footer__branches a:hover b { color: var(--orange); }
-.footer__bar { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-block: 1.1rem; border-top: 1px solid rgba(243,230,211,.1); }
+.footer__bar { display: flex; justify-content: center; text-align: center; padding-block: 1.1rem; border-top: 1px solid rgba(243,230,211,.1); }
 .footer__bar p { margin: 0; color: var(--mocha); font-size: .85rem; }
 
 
@@ -584,5 +584,4 @@ html:lang(en) .xcover__title { font-weight: 700; font-size: 12.5cqw; }
   .footer__brand { text-align: center; display: grid; justify-items: center; }
   .footer__tag { margin-inline: auto; }
   .footer__socials { justify-content: center; }
-  .footer__bar { justify-content: center; text-align: center; }
 }
