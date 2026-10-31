@@ -59,7 +59,16 @@ const tr = (k) => t(lang, k);
       </header>
       <div class="explore__grid">
         <a class="xcard xcard--book reveal" href={href(lang, '/stories')}>
-          <img class="xcard__beans" src="/media/beans/habashi.webp" alt="" loading="lazy">
+          <!-- the closed book, same cover as the stories page -->
+          <div class="xcover" aria-hidden="true">
+            <div class="xcover__frame">
+              <span class="xcover__orn orn"></span>
+              <span class="xcover__logo logo-mark"></span>
+              <span class="xcover__title">{tr('book.coverTitle')}</span>
+              <span class="xcover__sub">{tr('book.coverSub')}</span>
+              <span class="xcover__orn xcover__orn--down orn"></span>
+            </div>
+          </div>
           <h3>{tr('explore.stories.title')}</h3>
           <p>{tr('explore.stories.text')}</p>
           <span class="xcard__go">{tr('explore.go')}</span>

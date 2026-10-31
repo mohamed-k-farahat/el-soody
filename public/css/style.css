@@ -387,8 +387,31 @@ html:lang(en) .xcard__go::after { content: "→"; }
 .xcard:hover .xcard__go::after { transform: translateX(-5px); }
 html:lang(en) .xcard:hover .xcard__go::after { transform: translateX(5px); }
 .xcard--book { background: radial-gradient(circle at 50% 35%, #3a2414, #120b07 70%); }
-.xcard--book svg { position: absolute; inset: 8% 10% auto; width: 80%; z-index: -1; filter: drop-shadow(0 20px 30px rgba(0,0,0,.6)); transition: transform .8s ease; }
-.xcard--book:hover svg { transform: scale(1.05) rotate(-3deg); }
+/* a small closed copy of the stories book cover (book.css .pg--cover) */
+.xcover {
+  position: relative; align-self: center; margin: 0 auto 1.6rem;
+  width: min(52%, 210px); aspect-ratio: 5 / 7; container-type: inline-size;
+  background: url("../media/leather.jpg") center / cover, #24140b;
+  border-radius: 3px 7px 7px 3px;
+  box-shadow: inset 7px 0 9px -3px rgba(0,0,0,.6), 0 26px 40px -12px rgba(0,0,0,.75);
+  transform: rotate(-4deg); transition: transform .8s ease;
+}
+html[dir="rtl"] .xcover { border-radius: 7px 3px 3px 7px; box-shadow: inset -7px 0 9px -3px rgba(0,0,0,.6), 0 26px 40px -12px rgba(0,0,0,.75); transform: rotate(4deg); }
+.xcard--book:hover .xcover { transform: rotate(0) scale(1.04); }
+.xcover__frame {
+  position: absolute; inset: 6.5%;
+  border: 1px solid rgba(253,154,25,.55);
+  outline: 1px solid rgba(253,154,25,.25); outline-offset: -5px;
+  border-radius: 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4cqw;
+  text-align: center; padding: 6%;
+}
+.xcover__logo { width: 30cqw; }
+.xcover__title { font-family: var(--font-display); font-size: 15cqw; line-height: 1.1; color: var(--orange); text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+html:lang(en) .xcover__title { font-weight: 700; font-size: 12.5cqw; }
+.xcover__sub { font-weight: 600; font-size: 6cqw; line-height: 1.3; color: var(--cream-dim); }
+.xcover__orn { width: 44cqw; }
+.xcover__orn--down { transform: rotate(180deg); }
 
 /* footer links */
 .footer__links { display: flex; gap: 1.2rem; flex-wrap: wrap; }

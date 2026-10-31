@@ -27,7 +27,6 @@ a.lang-btn { display: inline-flex; align-items: center; justify-content: center;
 .btn--dark:hover { background: var(--coffee-800); }
 .board__table a { color: inherit; text-decoration: none; }
 .board__table a:hover { text-decoration: underline; text-underline-offset: 4px; }
-.xcard__beans { object-fit: contain !important; inset: 6% 8% auto !important; width: 84% !important; height: 62% !important; filter: drop-shadow(0 20px 30px rgba(0,0,0,.55)); }
 html.no-scroll { overflow: hidden; }
 
 /* ---------- cart drawer ---------- */
