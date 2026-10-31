@@ -585,3 +585,31 @@ html:lang(en) .xcover__title { font-weight: 700; font-size: 12.5cqw; }
   .footer__tag { margin-inline: auto; }
   .footer__socials { justify-content: center; }
 }
+
+/* ---------- dropdowns (product grind, form branch): site colors instead of the system blue ---------- */
+:root { accent-color: var(--orange); }
+select {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FD9A19' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-size: 18px; background-position: right 1rem center;
+  padding-inline-end: 2.8rem !important;
+}
+html[dir="rtl"] select { background-position: left 1rem center; }
+select option { background: var(--coffee-800); color: var(--cream); }
+select option:checked { background: var(--orange); color: var(--black); }
+
+/* browsers that let pages style the open list (Chrome, Edge, Samsung Internet) */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  select { display: flex; align-items: center; }
+  select::picker-icon { display: none; }
+  ::picker(select) {
+    background: var(--coffee-800); color: var(--cream);
+    border: 1.5px solid rgba(253,154,25,.45); border-radius: 14px;
+    padding: .35rem; margin-block: 6px; box-shadow: 0 18px 40px rgba(0,0,0,.55);
+  }
+  select option { padding: .6rem .85rem; border-radius: 9px; background: transparent; color: var(--cream); font: inherit; cursor: pointer; }
+  select option:hover, select option:focus-visible { background: rgba(253,154,25,.16); outline: none; }
+  select option:checked { background: var(--orange); color: var(--black); font-weight: 700; }
+  select option::checkmark { display: none; }
+}

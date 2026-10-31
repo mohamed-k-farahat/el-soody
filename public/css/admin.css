@@ -180,3 +180,29 @@ details.box summary { cursor: pointer; font-weight: 700; }
   body { background: #fff; }
   .card { border: 0; padding: 0; }
 }
+
+/* ---------- dropdowns, checkboxes and date pickers in orange instead of the system blue ---------- */
+:root { accent-color: var(--orange); }
+select {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E07F0A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-size: 16px; background-position: left .7rem center;
+  padding-inline-end: 2.4rem;
+}
+select option { background: #fff; color: var(--ink); }
+select option:checked { background: var(--orange); color: #fff; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--orange); }
+
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  select { display: flex; align-items: center; }
+  select::picker-icon { display: none; }
+  ::picker(select) {
+    background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+    padding: .3rem; margin-block: 4px; box-shadow: 0 12px 30px rgba(42,29,20,.18);
+  }
+  select option { padding: .5rem .75rem; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+  select option:hover, select option:focus-visible { background: var(--orange-soft); outline: none; }
+  select option:checked { background: var(--orange); color: #fff; font-weight: 700; }
+  select option::checkmark { display: none; }
+}

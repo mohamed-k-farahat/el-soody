@@ -123,7 +123,7 @@ html:lang(en) .product h1 { font-weight: 700; }
 .pick__opts input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
 .pick__opts input:disabled + span { opacity: .35; text-decoration: line-through; cursor: not-allowed; }
 .pick__opts small { color: var(--mocha); font-weight: 600; }
-.select { width: 100%; padding: .75rem 1rem; border-radius: 12px; background: var(--coffee-800); color: var(--cream); border: 1.5px solid rgba(243,230,211,.2); font: inherit; }
+.select { width: 100%; padding: .75rem 1rem; border-radius: 12px; background-color: var(--coffee-800); color: var(--cream); border: 1.5px solid rgba(243,230,211,.2); font: inherit; }
 .buy { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding-top: 1.2rem; border-top: 1px solid rgba(243,230,211,.12); }
 .buy__price { font-size: 1.8rem; font-weight: 700; font-family: var(--font-en-display); margin-inline-end: auto; }
 .buy .qty { margin: 0; }
