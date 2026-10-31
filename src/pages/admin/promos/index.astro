@@ -1,0 +1,67 @@
+---
+// Offers: the free first delivery switch, and all promo codes
+import Admin from '../../../layouts/Admin.astro';
+import { DB, getSettings, setSettings } from '../../../lib/db.js';
+import { egp } from '../../../lib/money.js';
+import { cairoToday } from '../../../lib/offers.js';
+import { promoText, promoState } from '../../../lib/admin.js';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (form.get('action') === 'welcome') await setSettings({ welcome_enabled: form.get('welcome_enabled') ? '1' : '0' });
+  return Astro.redirect('/admin/promos?saved=1', 303);
+}
+
+const s = await getSettings();
+const [{ results: promos }, welcomeStats] = await Promise.all([
+  DB().prepare('SELECT * FROM promos ORDER BY active DESC, created_at DESC').all(),
+  DB().prepare("SELECT count(*) AS n, coalesce(sum(delivery_waived), 0) AS saved FROM orders WHERE welcome = 1 AND status != 'cancelled'").first(),
+]);
+const today = cairoToday();
+---
+<Admin title="العروض" active="promos">
+  <h1>العروض</h1>
+
+  <form method="post" class="card">
+    <input type="hidden" name="action" value="welcome">
+    <h2>التوصيل مجاني في أول طلب توصيل</h2>
+    <p class="hint">كل عميل جديد أول طلب توصيل ليه من الموقع بيبقى من غير مصاريف توصيل (البن بيتدفع عادي). مرة واحدة لكل رقم موبايل، ومرة واحدة لكل عنوان، عشان محدش يكررها برقم تاني. لو الطلب اتلغى، العميل بيرجعله العرض.</p>
+    <div class="row" style="margin-top:.8rem">
+      <label class="check"><input type="checkbox" name="welcome_enabled" checked={s.welcome_enabled === '1'}> العرض شغال</label>
+      <button class="btn btn--small">احفظ</button>
+    </div>
+    <p class="hint">استخدمه لحد دلوقتي: <b>{welcomeStats.n}</b> عميل، ووفّروا <b>{egp(welcomeStats.saved)}</b> توصيل.</p>
+  </form>
+
+  <div class="spread">
+    <h2 style="margin:0">أكواد الخصم</h2>
+    <a class="btn btn--primary" href="/admin/promos/new">+ كود جديد</a>
+  </div>
+
+  {promos.length === 0 ? <p class="card">مفيش أكواد لسه. اعمل أول كود، مثلا SOODY10 بخصم ١٠٪.</p> : (
+    <div class="tablewrap">
+      <table class="t t--stack">
+        <thead><tr><th>الكود</th><th>الخصم</th><th>الشروط</th><th>اتستخدم</th><th>الحالة</th></tr></thead>
+        <tbody>
+          {promos.map((p) => {
+            const st = promoState(p, today);
+            return (
+              <tr>
+                <td class="lead"><a class="rowlink" href={`/admin/promos/${p.id}`} dir="ltr">{p.code}</a> <span class={`st st--${st.cls} show-sm`}>{st.label}</span></td>
+                <td data-label="الخصم">{promoText(p)}</td>
+                <td data-label="الشروط"><div>{[
+                  p.min_subtotal ? `طلبات من ${egp(p.min_subtotal)}` : '',
+                  p.per_customer ? `${p.per_customer === 1 ? 'مرة' : `${p.per_customer} مرات`} لكل عميل` : 'من غير حد للعميل',
+                  p.ends_on ? `لحد ${p.ends_on}` : '',
+                ].filter(Boolean).join('، ')}</div></td>
+                <td data-label="اتستخدم">{p.uses}{p.max_uses ? ` من ${p.max_uses}` : ''}</td>
+                <td class="hide-sm"><span class={`st st--${st.cls}`}>{st.label}</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+  <p class="hint">العميل بيكتب الكود في صفحة إتمام الطلب. كود واحد بس لكل طلب، وممكن يتجمع مع التوصيل المجاني لأول طلب.</p>
+</Admin>

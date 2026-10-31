@@ -43,6 +43,8 @@ export async function startPayment(order, origin) {
     quantity: i.qty,
   }));
   if (order.delivery_fee) items.push({ name: 'Delivery', amount: order.delivery_fee, description: 'Delivery fee', quantity: 1 });
+  // Paymob wants the items to add up to the amount; with a discount send the order as one line
+  if (order.discount) items.splice(0, items.length, { name: `Order ${order.code}`, amount: order.total, description: `El Soody order ${order.code}`, quantity: 1 });
 
   const res = await fetch(`${API}/v1/intention/`, {
     method: 'POST',

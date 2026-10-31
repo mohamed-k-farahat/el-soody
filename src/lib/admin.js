@@ -1,5 +1,6 @@
 // Small helpers shared by the admin pages.
 import { env } from 'cloudflare:workers';
+import { egp } from './money.js';
 
 export const STATUS_AR = {
   new: 'جديد', confirmed: 'اتأكد', preparing: 'بيتجهز', ready: 'جاهز', out: 'خرج للتوصيل', completed: 'اتسلم', cancelled: 'اتلغى',
@@ -37,3 +38,21 @@ export async function saveUpload(file, prefix) {
 /** form value helpers */
 export const str = (form, key, max = 500) => String(form.get(key) ?? '').trim().slice(0, max);
 export const flag = (form, key) => (form.get(key) ? 1 : 0);
+
+export const PROMO_KIND_AR = { percent: 'نسبة خصم', fixed: 'مبلغ خصم', delivery: 'توصيل مجاني' };
+
+/** "١٥٪ خصم، لحد ١٠٠ ج.م" style summary of what a code gives */
+export function promoText(p) {
+  if (p.kind === 'percent') return `خصم ${p.value}٪${p.max_discount ? `، لحد ${egp(p.max_discount)}` : ''}`;
+  if (p.kind === 'fixed') return `خصم ${egp(p.value)}`;
+  return 'توصيل مجاني';
+}
+
+/** Where a code stands today: { label, cls } for the status pill */
+export function promoState(p, today) {
+  if (!p.active) return { label: 'متوقف', cls: 'cancelled' };
+  if (p.ends_on && today > p.ends_on) return { label: 'انتهى', cls: 'cancelled' };
+  if (p.max_uses && p.uses >= p.max_uses) return { label: 'خلص', cls: 'refunded' };
+  if (p.starts_on && today < p.starts_on) return { label: 'لسه مابدأش', cls: 'ready' };
+  return { label: 'شغال', cls: 'completed' };
+}

@@ -10,6 +10,7 @@ const tr = (k) => t(lang, k);
 const s = await getSettings();
 const online = s.online && paymobReady();
 const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
+const welcome = s.welcome_enabled === '1' && s.deliveryFee > 0;
 ---
 <Base lang={lang} page="store" title={`${tr('checkout.title')} | ${tr('brand')}`} noindex>
   <section class="checkout">
@@ -37,6 +38,7 @@ const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
                     <b>{tr('checkout.delivery')}</b>
                     {area && <small>{area}</small>}
                     {s.freeDeliveryOver > 0 && <small>{tr('checkout.freeOver')} {egp(s.freeDeliveryOver, lang)}</small>}
+                    {welcome && <small class="welcome-hint">{tr('checkout.welcome')}</small>}
                   </span>
                   <span class="fee">{s.deliveryFee ? egp(s.deliveryFee, lang) : tr('checkout.free')}</span>
                 </label>
@@ -83,8 +85,23 @@ const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
         <aside class="panel summary" aria-live="polite">
           <h2>{tr('checkout.summary')}</h2>
           <div id="summaryLines"></div>
-          <div class="summary__line" id="feeLine" hidden><span>{tr('checkout.deliveryFee')}</span><span id="feeText"></span></div>
+          <div class="summary__line" id="feeLine" hidden><span>{tr('checkout.deliveryFee')}<small class="summary__note" id="feeNote"></small></span><span><s id="feeBefore"></s> <span id="feeText"></span></span></div>
+          <div class="summary__line summary__line--save" id="discountLine" hidden><span>{tr('checkout.discount')} <b id="discountCode" dir="ltr"></b></span><span id="discountText"></span></div>
           <div class="summary__total"><span>{tr('checkout.total')}</span><span id="totalText"></span></div>
+
+          <div class="promo">
+            <label for="promo">{tr('checkout.promo')}</label>
+            <div class="promo__row" id="promoEntry">
+              <input id="promo" autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr" maxlength="30" placeholder={tr('checkout.promoPh')}>
+              <button class="btn btn--ghost btn--sm" type="button" id="promoBtn">{tr('checkout.promoApply')}</button>
+            </div>
+            <div class="promo__on" id="promoOn" hidden>
+              <span class="promo__chip" dir="ltr" id="promoChip"></span>
+              <button class="promo__remove" type="button" id="promoRemove">{tr('checkout.promoRemove')}</button>
+            </div>
+            <p class="promo__msg" id="promoMsg" role="status"></p>
+          </div>
+
           <button class="btn btn--primary place" type="submit" id="placeBtn">{tr('checkout.place')}</button>
           <p class="form-err" id="formErr" role="alert"></p>
         </aside>

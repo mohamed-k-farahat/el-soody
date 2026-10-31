@@ -19,6 +19,8 @@ export async function notifyNewOrder(order) {
       '',
       ...lines,
       '',
+      ...(order.discount ? [`Discount (${order.promo_code}): ${egp(order.discount, 'en')}`] : []),
+      ...(order.welcome ? ['Free delivery: first delivery order'] : order.delivery_waived ? [`Free delivery with code ${order.promo_code}`] : []),
       `Total: ${egp(order.total, 'en')}`,
       order.notes ? `Notes: ${order.notes}` : '',
     ].join('\n');

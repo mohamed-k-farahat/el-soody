@@ -55,6 +55,12 @@ const waLink = settings.shop_whatsapp ? `https://wa.me/${settings.shop_whatsapp}
               <div class="summary__line"><span><b>{i.qty} × {i.name}</b><br>{[i.details, sizeLabel(i.size)].filter(Boolean).join(lang === 'ar' ? '، ' : ', ')}</span><span>{egp(i.line_total, lang)}</span></div>
             ))}
             {order.delivery_fee > 0 && <div class="summary__line"><span>{tr('checkout.deliveryFee')}</span><span>{egp(order.delivery_fee, lang)}</span></div>}
+            {order.delivery_waived > 0 && (
+              <div class="summary__line summary__line--save"><span>{order.welcome ? tr('order.freeWelcome') : `${tr('order.freePromo')} ${order.promo_code}`}</span><span><s>{egp(order.delivery_waived, lang)}</s> {tr('checkout.free')}</span></div>
+            )}
+            {order.discount > 0 && (
+              <div class="summary__line summary__line--save"><span>{tr('order.discount')} <b dir="ltr">{order.promo_code}</b></span><span>{egp(order.discount, lang)}</span></div>
+            )}
             <div class="summary__total"><span>{tr('checkout.total')}</span><span>{egp(order.total, lang)}</span></div>
           </div>
 

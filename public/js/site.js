@@ -60,11 +60,12 @@
   }
 
   /** ask the server for names and prices; drops lines that are no longer valid */
-  async function quote(lines, fulfilment = 'pickup') {
+  // extra: { phone, address, promo } from the checkout page, so offers can be priced too
+  async function quote(lines, fulfilment = 'pickup', extra = {}) {
     const res = await fetch('/api/cart/quote', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ lines, fulfilment, lang }),
+      body: JSON.stringify({ lines, fulfilment, lang, ...extra }),
     });
     if (!res.ok) throw new Error('quote failed');
     const data = await res.json();

@@ -1,6 +1,7 @@
 // Creating and reading orders.
 import { DB, getSettings } from './db.js';
 import { priceCart } from './cart.js';
+import { applyOffers, reservePromo, unreservePromo, releasePerks, reclaimPerks, releaseAbandoned } from './offers.js';
 
 export const STATUSES = ['new', 'confirmed', 'preparing', 'ready', 'out', 'completed', 'cancelled'];
 export const PAY_STATUSES = ['unpaid', 'pending', 'paid', 'failed', 'refunded'];
@@ -44,28 +45,60 @@ export async function createOrder(input) {
   if (!cart.lines.length) return { error: 'empty' };
   if (cart.problems.length) return { error: 'changed' };
 
+  // offers: what the customer saw at checkout must still hold now
+  await releaseAbandoned();
+  const offers = await applyOffers(cart, { fulfilment, phone, address, code: input.promo });
+  if (offers.promoError) return { error: 'promo', reason: offers.promoError, min: offers.promoMin };
+  if (Number.isInteger(input.expectTotal) && input.expectTotal !== offers.total) return { error: 'offer' };
+  const promo = offers.promo;
+  if (promo && !(await reservePromo(promo.id))) return { error: 'promo', reason: 'usedup' };
+
   const counter = await DB()
     .prepare("UPDATE settings SET value = CAST(value AS INTEGER) + 1 WHERE key = 'next_order_number' RETURNING value")
     .first();
   const code = `S${Number(counter.value) - 1}`;
   const token = crypto.randomUUID().replace(/-/g, '');
+  const orderId = '(SELECT id FROM orders WHERE token = ?)';
 
   const insertOrder = DB().prepare(`
-    INSERT INTO orders (code, token, fulfilment, payment_method, payment_status, name, phone, address, notes, lang, subtotal, delivery_fee, total)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    INSERT INTO orders (code, token, fulfilment, payment_method, payment_status, name, phone, address, notes, lang,
+                        subtotal, delivery_fee, total, discount, delivery_waived, promo_code, welcome)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(code, token, fulfilment, payment, payment === 'online' ? 'pending' : 'unpaid',
       name, phone, fulfilment === 'delivery' ? address : '', notes, lang,
-      cart.subtotal, cart.deliveryFee, cart.total);
+      cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0);
   const insertItem = DB().prepare(`
     INSERT INTO order_items (order_id, product_id, item_id, name, details, size, qty, unit_price, line_total)
-    VALUES ((SELECT id FROM orders WHERE token = ?), ?, ?, ?, ?, ?, ?, ?, ?)`);
-  // one transaction: the order and all its lines are saved together or not at all
-  await DB().batch([
-    insertOrder,
-    ...cart.lines.map((l) => insertItem.bind(token, l.productId, l.item, l.name, l.details, l.size, l.qty, l.unit, l.total)),
-  ]);
+    VALUES (${orderId}, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  // one transaction: the order, its lines and its offer claims are saved together or not at all.
+  // The claims hit unique keys if another order took the same one-time offer a moment earlier.
+  const claims = [];
+  if (offers.welcome) {
+    claims.push(DB().prepare(`INSERT INTO welcome_claims (phone, address_key, order_id) VALUES (?, ?, ${orderId})`).bind(phone, offers.addressKey, token));
+  }
+  if (promo) {
+    claims.push(DB().prepare(`INSERT INTO promo_uses (promo_id, order_id, phone, slot) VALUES (?, ${orderId}, ?, ?)`).bind(promo.id, token, phone, offers.slot));
+  }
+  try {
+    await DB().batch([
+      insertOrder,
+      ...cart.lines.map((l) => insertItem.bind(token, l.productId, l.item, l.name, l.details, l.size, l.qty, l.unit, l.total)),
+      ...claims,
+    ]);
+  } catch (e) {
+    if (promo) await unreservePromo(promo.id);
+    if (/UNIQUE/i.test(String(e?.message))) return { error: 'offer' };
+    throw e;
+  }
 
   return { order: await getOrderByToken(token) };
+}
+
+/** Changes an order's status; cancelling gives its offers back, un-cancelling takes them again */
+export async function setOrderStatus(order, status) {
+  await DB().prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").bind(status, order.id).run();
+  if (status === 'cancelled') await releasePerks(order.id);
+  else if (order.status === 'cancelled') await reclaimPerks(order);
 }
 
 export async function getOrderByToken(token) {

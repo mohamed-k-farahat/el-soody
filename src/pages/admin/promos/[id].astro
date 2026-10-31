@@ -1,0 +1,158 @@
+---
+// Create or edit a promo code
+import Admin from '../../../layouts/Admin.astro';
+import { DB } from '../../../lib/db.js';
+import { toPiasters } from '../../../lib/money.js';
+import { normalizeCode, PROMO_KINDS } from '../../../lib/offers.js';
+import { PROMO_KIND_AR, promoText, str, flag } from '../../../lib/admin.js';
+
+const isNew = Astro.params.id === 'new';
+const id = isNew ? null : Number(Astro.params.id);
+let promo = isNew ? null : await DB().prepare('SELECT * FROM promos WHERE id = ?').bind(id).first();
+if (!isNew && !promo) return new Response('Not found', { status: 404 });
+
+// once a code is on orders, its letters stay fixed (orders and limits are tied to it)
+const orderCount = promo ? (await DB().prepare('SELECT count(*) AS n FROM orders WHERE promo_code = ?').bind(promo.code).first()).n : 0;
+const codeLocked = orderCount > 0;
+
+const pounds = (p) => (p ? String(p / 100) : '');
+const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+const errors = [];
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+
+  if (form.get('action') === 'delete' && !isNew) {
+    if (codeLocked) errors.push('الكود ده اتستخدم في طلبات، فمينفعش يتمسح. وقّفه بدل كده (شيل علامة «شغال»).');
+    else {
+      await DB().prepare('DELETE FROM promos WHERE id = ?').bind(id).run();
+      return Astro.redirect('/admin/promos?saved=deleted', 303);
+    }
+  } else {
+    const kind = PROMO_KINDS.includes(String(form.get('kind'))) ? String(form.get('kind')) : 'percent';
+    const v = {
+      code: codeLocked ? promo.code : normalizeCode(form.get('code')),
+      kind,
+      value: 0,
+      max_discount: 0,
+      min_subtotal: toPiasters(form.get('min_subtotal')) ?? 0,
+      starts_on: str(form, 'starts_on', 10),
+      ends_on: str(form, 'ends_on', 10),
+      max_uses: Math.floor(Number(form.get('max_uses')) || 0),
+      per_customer: form.get('per_customer') === '' ? 0 : Math.floor(Number(form.get('per_customer'))),
+      active: flag(form, 'active'),
+      note: str(form, 'note', 200),
+    };
+    if (kind === 'percent') {
+      v.value = Math.floor(Number(form.get('value')));
+      v.max_discount = toPiasters(form.get('max_discount')) ?? 0;
+      if (!(v.value >= 1 && v.value <= 100)) errors.push('النسبة لازم تكون من ١ لـ ١٠٠.');
+    } else if (kind === 'fixed') {
+      v.value = toPiasters(form.get('value')) ?? 0;
+      if (!(v.value > 0)) errors.push('اكتب مبلغ الخصم بالجنيه.');
+    }
+
+    if (!v.code) errors.push('الكود لازم يكون من ٣ لـ ٢٠ حرف إنجليزي أو رقم، من غير مسافات. مثلا: SOODY10');
+    if (Number.isNaN(v.min_subtotal) || Number.isNaN(v.max_discount)) errors.push('المبالغ لازم تكون أرقام.');
+    if ((v.starts_on && !isDate(v.starts_on)) || (v.ends_on && !isDate(v.ends_on))) errors.push('التاريخ مش مظبوط.');
+    if (v.starts_on && v.ends_on && v.ends_on < v.starts_on) errors.push('تاريخ النهاية قبل تاريخ البداية.');
+    if (!(v.max_uses >= 0)) errors.push('عدد الاستخدامات لازم يكون رقم.');
+    if (!(v.per_customer >= 0 && v.per_customer <= 100)) errors.push('عدد المرات لكل عميل لازم يكون من ٠ لـ ١٠٠.');
+    const clash = v.code && await DB().prepare('SELECT id FROM promos WHERE code = ? AND id IS NOT ?').bind(v.code, id).first();
+    if (clash) errors.push('الكود ده موجود قبل كده.');
+
+    if (!errors.length) {
+      const cols = ['code', 'kind', 'value', 'max_discount', 'min_subtotal', 'starts_on', 'ends_on', 'max_uses', 'per_customer', 'active', 'note'];
+      if (isNew) {
+        await DB().prepare(`INSERT INTO promos (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`)
+          .bind(...cols.map((c) => v[c])).run();
+        return Astro.redirect('/admin/promos?saved=1', 303);
+      }
+      await DB().prepare(`UPDATE promos SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).bind(...cols.map((c) => v[c]), id).run();
+      return Astro.redirect('/admin/promos?saved=1', 303);
+    }
+    promo = { ...(promo || { uses: 0 }), ...v };
+  }
+}
+
+const p = promo || { kind: 'percent', value: 10, per_customer: 1, max_uses: 0, active: 1, uses: 0 };
+const val = (k) => p[k] ?? '';
+---
+<Admin title={isNew ? 'كود جديد' : `كود ${p.code}`} active="promos">
+  <div class="spread">
+    <h1>{isNew ? 'كود خصم جديد' : <span dir="ltr">{p.code}</span>}</h1>
+    <div class="row"><a class="btn" href="/admin/promos">← كل العروض</a></div>
+  </div>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+  {!isNew && <p class="hint">{promoText(p)}. اتستخدم في {p.uses} طلب شغال{orderCount > p.uses ? ` (و${orderCount - p.uses} طلب اتلغى)` : ''}.</p>}
+
+  <form method="post" id="promoForm">
+    <section class="card">
+      <h2>الكود والخصم</h2>
+      <div class="grid2">
+        <label class="f">الكود اللي العميل هيكتبه
+          <input type="text" name="code" value={val('code')} dir="ltr" required maxlength="20" placeholder="SOODY10" style="text-transform:uppercase" readonly={codeLocked}>
+          <span class="hint">{codeLocked ? 'مينفعش يتغير بعد ما اتستخدم.' : 'حروف إنجليزي وأرقام بس، من ٣ لـ ٢٠.'}</span>
+        </label>
+        <label class="f">نوع الخصم
+          <select name="kind" id="kind">
+            {PROMO_KINDS.map((k) => <option value={k} selected={p.kind === k}>{PROMO_KIND_AR[k]}</option>)}
+          </select>
+        </label>
+        <label class="f" data-for="percent fixed"><span id="valueLabel">{p.kind === 'fixed' ? 'المبلغ بالجنيه' : 'النسبة ٪'}</span>
+          <input type="number" name="value" value={p.kind === 'fixed' ? pounds(p.value) : val('value')} min="0" step="any" inputmode="decimal">
+        </label>
+        <label class="f" data-for="percent">أقصى خصم بالجنيه (اختياري)
+          <input type="number" name="max_discount" value={pounds(p.max_discount)} min="0" step="1" inputmode="decimal">
+          <span class="hint">مثلا ١٠٪ لحد ١٠٠ جنيه. سيبه فاضي لو مفيش حد.</span>
+        </label>
+      </div>
+      <p class="hint" data-for="delivery">الكود ده بيلغي مصاريف التوصيل بس، وبيشتغل في طلبات التوصيل.</p>
+    </section>
+
+    <section class="card">
+      <h2>الشروط</h2>
+      <div class="grid2">
+        <label class="f">أقل قيمة للبن في الطلب بالجنيه (اختياري)<input type="number" name="min_subtotal" value={pounds(p.min_subtotal)} min="0" step="1" inputmode="decimal"></label>
+        <label class="f">كام مرة لكل عميل (رقم الموبايل)
+          <input type="number" name="per_customer" value={p.per_customer || ''} min="0" max="100" step="1" placeholder="من غير حد">
+          <span class="hint">١ يعني مرة واحدة. سيبه فاضي لو مفيش حد.</span>
+        </label>
+        <label class="f">يبدأ من (اختياري)<input type="date" name="starts_on" value={val('starts_on')}></label>
+        <label class="f">آخر يوم (اختياري)<input type="date" name="ends_on" value={val('ends_on')}></label>
+        <label class="f">أقصى عدد استخدامات لكل العملاء
+          <input type="number" name="max_uses" value={p.max_uses || ''} min="0" step="1" placeholder="من غير حد">
+          <span class="hint">مثلا ٥٠ لأول ٥٠ طلب بس.</span>
+        </label>
+        <label class="f">ملاحظة ليك (العميل مش بيشوفها)<input type="text" name="note" value={val('note')} maxlength="200" placeholder="مثلا: بوست إنستجرام رمضان"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="active" checked={!!p.active}> شغال</label>
+    </section>
+
+    <div class="savebar"><button class="btn btn--primary">احفظ</button></div>
+  </form>
+
+  {!isNew && (
+    <form method="post" class="card" onsubmit="return confirm('متأكد إنك عايز تمسح الكود ده؟')">
+      <h2>امسح الكود</h2>
+      <p class="hint">{codeLocked ? 'الكود اتستخدم في طلبات، فمينفعش يتمسح. لو عايز توقفه، شيل علامة «شغال» واحفظ.' : 'لو عايز توقفه مؤقتا، شيل علامة «شغال» بدل ما تمسحه.'}</p>
+      <button class="btn btn--danger" name="action" value="delete" disabled={codeLocked}>امسح</button>
+    </form>
+  )}
+
+  <script is:inline>
+    // show only the fields that matter for the chosen kind
+    (function () {
+      var kind = document.getElementById('kind');
+      var label = document.getElementById('valueLabel');
+      function sync() {
+        document.querySelectorAll('[data-for]').forEach(function (el) {
+          el.hidden = el.getAttribute('data-for').split(' ').indexOf(kind.value) < 0;
+        });
+        label.textContent = kind.value === 'fixed' ? 'المبلغ بالجنيه' : 'النسبة ٪';
+      }
+      kind.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
+</Admin>

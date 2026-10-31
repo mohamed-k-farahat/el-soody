@@ -2,7 +2,7 @@
 // One order: details, status, payment, contact the customer, print
 import Admin from '../../../layouts/Admin.astro';
 import { DB } from '../../../lib/db.js';
-import { getOrderById, STATUSES, PAY_STATUSES } from '../../../lib/orders.js';
+import { getOrderById, setOrderStatus, STATUSES, PAY_STATUSES } from '../../../lib/orders.js';
 import { egp } from '../../../lib/money.js';
 import { STATUS_AR, PAY_AR, cairoTime, waNumber } from '../../../lib/admin.js';
 
@@ -14,9 +14,7 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const status = String(form.get('status') || '');
   const pay = String(form.get('payment_status') || '');
-  if (STATUSES.includes(status)) {
-    await DB().prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").bind(status, id).run();
-  }
+  if (STATUSES.includes(status) && status !== order.status) await setOrderStatus(order, status);
   // online payments are set by Paymob; the owner can still record a refund
   const payAllowed = order.payment_method === 'cod' ? ['unpaid', 'paid'] : ['refunded'];
   if (PAY_STATUSES.includes(pay) && payAllowed.includes(pay)) {
@@ -66,7 +64,8 @@ const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أ
             <tr><td class="lead"><div><b>{i.name}</b><br><span class="hint">{i.details}</span></div></td><td data-label="الوزن">{SIZE[i.size] || `${i.size} جم`}</td><td data-label="الكمية">{i.qty}</td><td data-label="السعر">{egp(i.unit_price)}</td><td data-label="الإجمالي">{egp(i.line_total)}</td></tr>
           ))}
           <tr class="sum"><td colspan="4">المجموع</td><td>{egp(order.subtotal)}</td></tr>
-          {order.fulfilment === 'delivery' && <tr class="sum"><td colspan="4">التوصيل</td><td>{egp(order.delivery_fee)}</td></tr>}
+          {order.fulfilment === 'delivery' && <tr class="sum"><td colspan="4">التوصيل{order.welcome ? ' (أول طلب توصيل)' : order.delivery_waived ? ` (بالكود ${order.promo_code})` : ''}</td><td>{order.delivery_waived ? <><s>{egp(order.delivery_waived)}</s> مجاني</> : egp(order.delivery_fee)}</td></tr>}
+          {order.discount > 0 && <tr class="sum"><td colspan="4">خصم بالكود <b dir="ltr">{order.promo_code}</b></td><td>{egp(order.discount)}</td></tr>}
           <tr class="sum"><td colspan="4"><b>الإجمالي</b></td><td><b>{egp(order.total)}</b></td></tr>
         </tbody>
       </table>

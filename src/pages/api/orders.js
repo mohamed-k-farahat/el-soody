@@ -1,6 +1,7 @@
 // POST /api/orders: place an order from the checkout page
 import { createOrder } from '../../lib/orders.js';
-import { href } from '../../lib/i18n.js';
+import { href, t } from '../../lib/i18n.js';
+import { egp } from '../../lib/money.js';
 import { startPayment } from '../../lib/paymob.js';
 import { notifyNewOrder } from '../../lib/notify.js';
 
@@ -9,7 +10,13 @@ export async function POST({ request, locals }) {
   try { body = await request.json(); } catch { return Response.json({ error: 'generic' }, { status: 400 }); }
 
   const result = await createOrder(body);
-  if (result.error) return Response.json(result, { status: 422 });
+  if (result.error) {
+    if (result.error === 'promo') {
+      const lang = body.lang === 'en' ? 'en' : 'ar';
+      result.text = t(lang, `checkout.promo.err.${result.reason}`).replace('{min}', egp(result.min || 0, lang));
+    }
+    return Response.json(result, { status: 422 });
+  }
 
   const { order } = result;
   locals.cfContext?.waitUntil?.(notifyNewOrder(order));
