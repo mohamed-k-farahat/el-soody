@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { t, href } from '../lib/i18n.js';
-import { getProduct, getItems, getGrinds, loc, SIZES, ROAST_ORDER } from '../lib/db.js';
+import { getProduct, getItems, getGrinds, getSettings, loc, SIZES, ROAST_ORDER } from '../lib/db.js';
 import { egp } from '../lib/money.js';
 import { imageUrl, storePhotos, isPhoto } from '../lib/images.js';
 
@@ -13,6 +13,9 @@ const product = await getProduct(slug);
 const items = await getItems({ productId: product.id });
 
 const grinds = product.kind === 'coffee' ? await getGrinds() : [];
+const settings = await getSettings();
+// "إضافة تحويجة": plain coffee can get the spice blend for one of the amounts set in admin
+const spiceAddons = product.kind === 'coffee' && items.some((i) => i.section === 'plain') ? settings.spiceAddons : [];
 const name = loc(product, 'name', lang);
 const photos = storePhotos(product);
 const image = imageUrl(photos[0]);
@@ -27,6 +30,7 @@ const data = {
     priceText: Object.fromEntries(SIZES.map((s) => [s, egp(i.prices[s], lang)])),
   })),
   sections: [...new Set(items.map((i) => i.section))],
+  spiceAddons,
 };
 const first = data.items[0];
 const firstSize = SIZES.find((s) => first.prices[s] != null);
@@ -116,6 +120,16 @@ const roastLabel = (r) => tr(`roast.${r}`);
               ))}
             </div>
           </fieldset>
+
+          {spiceAddons.length > 0 && (
+            <fieldset class="pick" id="pickSpice" hidden={first.section !== 'plain'}>
+              <legend>{tr('product.spice')}</legend>
+              <div class="pick__opts">
+                <label><input type="radio" name="spice" value="0" checked><span>{tr('product.spiceNone')}</span></label>
+                {spiceAddons.map((p) => <label><input type="radio" name="spice" value={p}><span>+ {egp(p, lang)}</span></label>)}
+              </div>
+            </fieldset>
+          )}
 
           {grinds.length > 0 && (
             <div class="pick">

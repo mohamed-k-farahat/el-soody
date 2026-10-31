@@ -43,7 +43,12 @@ if (form && form.get('action') === 'password') {
     hours_ar: str(form, 'hours_ar', 200), hours_en: str(form, 'hours_en', 200),
     instagram: str(form, 'instagram', 300), facebook: str(form, 'facebook', 300), tiktok: str(form, 'tiktok', 300),
     order_email: str(form, 'order_email', 120),
+    spice_addon_enabled: flag(form, 'spice_addon_enabled'),
+    spice_addon_prices: String(form.get('spice_addon_prices') || '')
+      .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).split(/[,،\s]+/).map((x) => toPiasters(x))
+      .filter((n) => Number.isInteger(n) && n > 0).slice(0, 6).join(','),
   };
+  if (values.spice_addon_enabled && !values.spice_addon_prices) errors.push('اكتب مبالغ التحويجة، مثلا: 10، 20، 30');
   if (!values.pickup_enabled && !values.delivery_enabled) errors.push('لازم طريقة استلام واحدة على الأقل.');
   if (!values.cod_enabled && !values.online_enabled) errors.push('لازم طريقة دفع واحدة على الأقل.');
   for (const k of ['instagram', 'facebook', 'tiktok']) if (values[k] && !/^https:\/\//.test(values[k])) errors.push(`الرابط لازم يبدأ بـ https://`);
@@ -112,6 +117,15 @@ const ready = paymobReady();
         <label class="f">Facebook<input type="url" name="facebook" value={s.facebook} dir="ltr"></label>
         <label class="f">TikTok<input type="url" name="tiktok" value={s.tiktok} dir="ltr"></label>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>إضافة تحويجة للبن السادة</h2>
+      <p class="hint">زي اللي في المنيو المطبوع «إضافة تحويجة (10-20-30)». العميل بيختار واحدة وهو بيطلب بن سادة، والمبلغ بيتضاف على سعر كل كيس.</p>
+      <div class="row" style="margin-bottom:.8rem">
+        <label class="check"><input type="checkbox" name="spice_addon_enabled" checked={s.spice_addon_enabled === '1'}> شغالة</label>
+      </div>
+      <label class="f">المبالغ بالجنيه (افصل بينهم بفاصلة)<input type="text" name="spice_addon_prices" value={String(s.spice_addon_prices || '').split(',').filter(Boolean).map((p) => Number(p) / 100).join('، ')} dir="ltr" placeholder="10, 20, 30"></label>
     </section>
 
     <section class="card">

@@ -47,6 +47,10 @@ export async function getSettings() {
     online: s.online_enabled === '1',
     deliveryFee: num('delivery_fee'),
     freeDeliveryOver: num('free_delivery_over'),
+    // spice blend add-on for plain coffee, in piasters (empty when switched off)
+    spiceAddons: s.spice_addon_enabled === '1'
+      ? String(s.spice_addon_prices || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0)
+      : [],
   };
 }
 

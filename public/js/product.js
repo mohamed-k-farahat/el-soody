@@ -54,6 +54,13 @@
       if (firstRoast) firstRoast.checked = true;
     }
 
+    // spice blend add-on: plain coffee only
+    const spiceBox = document.getElementById('pickSpice');
+    if (spiceBox) {
+      spiceBox.hidden = section() !== 'plain';
+      if (spiceBox.hidden) { const none = $('input[name="spice"][value="0"]'); if (none) none.checked = true; }
+    }
+
     // sizes and prices of the chosen row
     const item = currentItem();
     $$('input[name="size"]').forEach((s) => {
@@ -73,10 +80,12 @@
     return Math.min(50, Math.max(1, Number.isFinite(q) ? q : 1));
   }
 
+  const spice = () => (section() === 'plain' ? Number(value('spice') || 0) : 0);
+
   function paintPrice() {
     const item = currentItem();
     const unit = item.prices[value('size')];
-    document.getElementById('buyPrice').textContent = unit == null ? '' : money(unit * qty());
+    document.getElementById('buyPrice').textContent = unit == null ? '' : money((unit + spice()) * qty());
   }
 
   form.addEventListener('change', (e) => {
@@ -101,6 +110,7 @@
       size,
       roast: item.roasts.length ? value('roast') : '',
       grind: Number($('#grind')?.value || 0),
+      spice: spice(),
       qty: qty(),
     });
     const msg = document.getElementById('buyMsg');

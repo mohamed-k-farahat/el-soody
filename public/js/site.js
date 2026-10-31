@@ -50,7 +50,7 @@
     paintCount(lines);
     document.dispatchEvent(new CustomEvent('soody:cart', { detail: lines }));
   };
-  const lineKey = (l) => `${l.item}|${l.size}|${l.roast || ''}|${l.grind || 0}`;
+  const lineKey = (l) => `${l.item}|${l.size}|${l.roast || ''}|${l.grind || 0}|${l.spice || 0}`;
 
   function paintCount(lines = read()) {
     const n = lines.reduce((s, l) => s + (l.qty || 0), 0);
