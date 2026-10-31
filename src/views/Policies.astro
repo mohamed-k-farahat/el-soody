@@ -1,0 +1,99 @@
+---
+// Store policies (terms, privacy, returns, delivery, contact).
+// DRAFT text for the owner to review before launch. Fees, areas and contact details come from admin settings.
+import Base from '../layouts/Base.astro';
+import { t, href } from '../lib/i18n.js';
+import { getSettings } from '../lib/db.js';
+import { egp } from '../lib/money.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+const s = await getSettings();
+const ar = lang === 'ar';
+
+const fee = s.deliveryFee ? egp(s.deliveryFee, lang) : (ar ? 'مجاني' : 'free');
+const freeOver = s.freeDeliveryOver ? egp(s.freeDeliveryOver, lang) : '';
+const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
+const address = s[`address_${lang}`] || s.address_ar;
+const hours = s[`hours_${lang}`] || s.hours_ar;
+
+const sections = ar ? [
+  ['terms', 'شروط الطلب', [
+    'الأسعار المعروضة في الموقع بالجنيه المصري، وهي اللي بتتحسب وقت تأكيد الطلب. ممكن الأسعار تتغير من وقت للتاني، والتغيير مش بيأثر على طلب اتأكد خلاص.',
+    'بعد ما تبعت الطلب، هنكلمك على رقم الموبايل اللي كتبته لتأكيده. لو صنف مش متاح، هنبلغك ونعدّل الطلب أو نلغيه، ولو كنت دافع أونلاين هنرجعلك فلوسه.',
+    'البن منتج غذائي بيتحمّص ويتطحن حسب طلبك. الصور للتوضيح، ولون الحبوب ممكن يختلف شوية من محصول للتاني.',
+  ]],
+  ['privacy', 'الخصوصية', [
+    'بنطلب منك الاسم ورقم الموبايل والعنوان (لو توصيل) عشان نجهّز طلبك ونتواصل معاك بخصوصه بس. مش بنبيع بياناتك ولا بنشاركها مع حد غير اللي محتاجينه لتوصيل الطلب.',
+    'لو دفعت أونلاين، بيانات الكارت بتتكتب وتتعالج عند Paymob، شركة الدفع، ومش بتوصلنا ولا بنحفظها.',
+    'السلة بتتحفظ في متصفحك على جهازك بس. لو عايز نمسح بياناتك من عندنا، كلّمنا على الأرقام اللي تحت.',
+  ]],
+  ['returns', 'الاسترجاع والاستبدال', [
+    'عشان البن بيتحمّص ويتطحن مخصوص لكل طلب، مش بنقدر نرجّع بن اتفتح أو اتطحن، إلا لو وصلك صنف غلط أو فيه عيب.',
+    'لو حصل كده، كلّمنا خلال ٤٨ ساعة من الاستلام ومعاك صورة للمنتج، وهنبدّله أو نرجعلك فلوسه.',
+    'الفلوس المدفوعة أونلاين بترجع على نفس طريقة الدفع عن طريق Paymob، والمدة بتعتمد على البنك أو المحفظة.',
+  ]],
+  ['delivery', 'التوصيل والاستلام', [
+    s.pickup ? 'تقدر تستلم طلبك من المحل، وهنكلمك أول ما يبقى جاهز.' : '',
+    s.delivery ? `مصاريف التوصيل ${fee}${freeOver ? `، والتوصيل مجاني للطلبات من ${freeOver}` : ''}.${area ? ` بنوصّل في: ${area}.` : ''}` : '',
+    s.delivery ? 'بنتفق معاك على معاد التوصيل لما نكلمك لتأكيد الطلب. لو اخترت الدفع عند الاستلام، بتدفع للمندوب أو في المحل.' : '',
+  ]],
+  ['contact', 'تواصل معانا', [
+    s.shop_phone ? `تليفون: ${s.shop_phone}` : '',
+    s.shop_whatsapp ? `واتساب: +${s.shop_whatsapp}` : '',
+    address ? `العنوان: ${address}` : '',
+    hours ? `مواعيد العمل: ${hours}` : '',
+  ]],
+] : [
+  ['terms', 'Ordering terms', [
+    'Prices on the site are in Egyptian pounds and are the prices charged when your order is confirmed. Prices may change from time to time; a change does not affect an order that is already confirmed.',
+    'After you place an order we will call the mobile number you gave to confirm it. If an item is unavailable we will tell you and adjust or cancel the order, and refund anything paid online.',
+    'Coffee is a food product roasted and ground to order. Photos are for illustration, and bean color can vary slightly from harvest to harvest.',
+  ]],
+  ['privacy', 'Privacy', [
+    'We ask for your name, mobile number and (for delivery) address only to prepare your order and contact you about it. We do not sell your data or share it with anyone except as needed to deliver your order.',
+    'If you pay online, your card details are entered and processed by Paymob, our payment provider. They never reach us and we do not store them.',
+    'Your cart is saved only in your own browser. If you want us to delete your details, contact us using the details below.',
+  ]],
+  ['returns', 'Returns and exchanges', [
+    'Because coffee is roasted and ground for each order, we cannot take back coffee that has been opened or ground, unless you received the wrong item or a faulty one.',
+    'If that happens, contact us within 48 hours of receiving it with a photo of the product, and we will replace it or refund you.',
+    'Online payments are refunded to the same payment method through Paymob; timing depends on your bank or wallet.',
+  ]],
+  ['delivery', 'Delivery and pickup', [
+    s.pickup ? 'You can pick up your order at the shop; we will call you as soon as it is ready.' : '',
+    s.delivery ? `Delivery costs ${fee}${freeOver ? `, and is free on orders from ${freeOver}` : ''}.${area ? ` We deliver to: ${area}.` : ''}` : '',
+    s.delivery ? 'We agree the delivery time with you when we call to confirm the order. With cash on delivery, you pay the courier or at the shop.' : '',
+  ]],
+  ['contact', 'Contact us', [
+    s.shop_phone ? `Phone: ${s.shop_phone}` : '',
+    s.shop_whatsapp ? `WhatsApp: +${s.shop_whatsapp}` : '',
+    address ? `Address: ${address}` : '',
+    hours ? `Opening hours: ${hours}` : '',
+  ]],
+];
+const contactFallback = ar ? 'بيانات التواصل هتتضاف قريب.' : 'Contact details will be added soon.';
+---
+<Base lang={lang} page="policies" title={`${tr('footer.policies')} | ${tr('brand')}`} description={ar ? 'شروط الطلب والخصوصية والاسترجاع والتوصيل في بن السعودي.' : 'Ordering terms, privacy, returns and delivery at El Soody Coffee.'}>
+  <section class="page-head page-head--book">
+    <div class="container">
+      <p class="eyebrow">{tr('brand')}</p>
+      <h1>{tr('footer.policies')}</h1>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container prose">
+      <nav class="policy-nav">{sections.map(([id, title]) => <a href={`#${id}`}>{title}</a>)}</nav>
+      {sections.map(([id, title, paras]) => {
+        const lines = paras.filter(Boolean);
+        return (
+          <section id={id}>
+            <h2>{title}</h2>
+            {lines.length ? lines.map((p) => <p>{p}</p>) : <p>{contactFallback}</p>}
+          </section>
+        );
+      })}
+      <p><a class="btn btn--primary" href={href(lang, '/store')}>{tr('cta.button')}</a></p>
+    </div>
+  </section>
+</Base>

@@ -6,7 +6,8 @@ import { paymobMode, signTransaction, verifyTransaction, applyTransaction } from
 import { href } from '../../lib/i18n.js';
 import { egp } from '../../lib/money.js';
 
-if (paymobMode() !== 'mock') return new Response('Not found', { status: 404 });
+const local = ['localhost', '127.0.0.1'].includes(Astro.url.hostname);
+if (paymobMode() !== 'mock' || !local) return new Response('Not found', { status: 404 });
 
 const order = await getOrderByToken(Astro.url.searchParams.get('token'));
 if (!order) return new Response('Not found', { status: 404 });

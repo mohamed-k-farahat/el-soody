@@ -20,7 +20,7 @@ const tr = (k) => t(lang, k);
 const seo = page ? await getSeo(page) : {};
 const pageTitle = title || seo[`title_${lang}`] || tr('meta.title.home');
 const pageDesc = description || seo[`desc_${lang}`] || tr('meta.desc');
-const site = Astro.site?.origin || Astro.url.origin;
+const site = Astro.url.origin; // whatever domain served this page, so links follow the real domain
 const shareImage = new URL(imageUrl(image || seo.image || '/media/sign-close.jpg'), site).href;
 
 const path = basePath(Astro.url.pathname);

@@ -3,6 +3,9 @@
    (uses the tokens defined in style.css)
    ========================================================= */
 
+/* elements toggled with the hidden attribute must stay hidden even when a class sets display */
+[hidden] { display: none !important; }
+
 /* ---------- nav additions ---------- */
 a.lang-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .cart-btn {
@@ -100,7 +103,7 @@ html:lang(en) .pcard__name { font-weight: 700; font-size: 1.25rem; }
 .product__media { position: sticky; top: 100px; border-radius: 24px; overflow: hidden; background: radial-gradient(circle at 50% 40%, #F6EBD6, #DCC6A2); aspect-ratio: 1 / .9; display: grid; place-items: center; }
 .product__media img { width: 100%; height: 100%; object-fit: contain; }
 .product__media img.is-photo { object-fit: cover; }
-.crumb { display: inline-block; color: var(--cream-dim); text-decoration: none; font-size: .9rem; margin-bottom: 1rem; }
+.crumb { display: block; width: max-content; color: var(--cream-dim); text-decoration: none; font-size: .9rem; margin-bottom: 1rem; }
 .crumb:hover { color: var(--orange); }
 .product h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.15; margin: .2rem 0 .5rem; }
 html:lang(en) .product h1 { font-weight: 700; }
@@ -140,7 +143,7 @@ html:lang(en) .checkout h1 { font-weight: 700; }
 .choice label:has(input:checked) { border-color: var(--orange); background: rgba(253,154,25,.08); }
 .choice input { accent-color: var(--orange); margin-top: .3rem; }
 .choice b { display: block; }
-.choice small { color: var(--cream-dim); }
+.choice small { display: block; color: var(--cream-dim); }
 .choice .fee { margin-inline-start: auto; font-weight: 700; white-space: nowrap; }
 .field { display: grid; gap: .35rem; margin-bottom: .9rem; }
 .field label { font-weight: 600; font-size: .92rem; }

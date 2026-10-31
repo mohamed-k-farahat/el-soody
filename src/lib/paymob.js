@@ -13,11 +13,13 @@ const HMAC_FIELDS = [
   'is_voided', 'order.id', 'owner', 'pending', 'source_data.pan', 'source_data.sub_type', 'source_data.type', 'success',
 ];
 
-export const paymobMode = () => env.PAYMOB_MODE || 'mock';
+// mock (fake payment page) is only ever set in .dev.vars for local development
+export const paymobMode = () => env.PAYMOB_MODE || 'off';
 const hmacSecret = () => env.PAYMOB_HMAC_SECRET || (paymobMode() === 'mock' ? 'mock-hmac-secret' : '');
 
 /** true when online payment can actually run (keys present, or mock mode) */
 export function paymobReady() {
+  if (paymobMode() === 'off') return false;
   if (paymobMode() === 'mock') return true;
   return Boolean(env.PAYMOB_SECRET_KEY && env.PAYMOB_PUBLIC_KEY && env.PAYMOB_HMAC_SECRET && env.PAYMOB_INTEGRATION_IDS);
 }

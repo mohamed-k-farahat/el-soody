@@ -15,7 +15,7 @@ const items = await getItems({ productId: product.id });
 const grinds = product.kind === 'coffee' ? await getGrinds() : [];
 const name = loc(product, 'name', lang);
 const image = imageUrl(product.image);
-const site = Astro.site?.origin || Astro.url.origin;
+const site = Astro.url.origin;
 
 // everything the picker needs, small and price-only (the server re-checks on order)
 const data = {

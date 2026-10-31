@@ -14,10 +14,8 @@
     { "binding": "MEDIA", "bucket_name": "el-soody-media" }
   ],
   "vars": {
-    // public site address, used for payment return links and SEO
-    "SITE_URL": "http://localhost:4321",
-    // "mock" runs a fake payment page locally; "test" / "live" talk to Paymob
-    "PAYMOB_MODE": "mock",
+    // "test" or "live" once Paymob keys are added as secrets. Local development uses "mock" from .dev.vars.
+    "PAYMOB_MODE": "",
     // Cloudflare Access (admin login). Filled in at launch.
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": ""
