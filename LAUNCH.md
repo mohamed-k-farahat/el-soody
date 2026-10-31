@@ -1,0 +1,47 @@
+# Taking the El Soody store live
+
+The store runs on Cloudflare (site + database + photos) with Paymob for card and wallet payments.
+Everything is built and tested locally on the `store` branch. Going live needs accounts that only you
+and the owner can create.
+
+## Do now (takes days to approve)
+
+**Paymob merchant account**: apply at paymob.com with the shop's commercial register, tax card, the
+owner's national ID and the bank account for payouts. Paymob reviews the live website, so it must
+be online with the policies page (step 4 below gets it online with cash on delivery first).
+
+## Steps
+
+| # | Who | What |
+|---|---|---|
+| 1 | You | Create a free Cloudflare account at dash.cloudflare.com |
+| 2 | You | Approve the Cloudflare sign in when I run `npx wrangler login` (opens your browser, like the GitHub sign in) |
+| 3 | Me | Create the production database and photo storage, apply the schema and load the seed data (all products, stories, prices) |
+| 4 | Me | Deploy the site. It gets an address like `el-soody.<your-name>.workers.dev`. Cash on delivery works from here |
+| 5 | You | In Cloudflare, Zero Trust: create the admin login (Access application for `/admin`) with the owner's email. I'll guide you click by click, then put the two values it gives into the config |
+| 6 | Owner | Open `/admin`, fill in Settings: delivery fee, areas, shop phone, WhatsApp, address, hours. Check every price |
+| 7 | Owner | Read and adjust the Policies page wording (it is a starting draft, not legal advice) |
+| 8 | You | Optional but recommended: buy a domain (about $10 a year, e.g. elsoody.com) in Cloudflare, then I connect it |
+| 9 | Me | When Paymob approves: add the Paymob keys as secrets, set the webhook URL in the Paymob dashboard, test with Paymob test cards, then switch to live and turn on online payment in admin settings |
+| 10 | Me | Connect the GitHub repo so every push deploys automatically, and retire the old GitHub Pages site |
+
+## Paymob values needed at step 9
+From the Paymob dashboard (Developers / Settings):
+- Secret key
+- Public key
+- HMAC secret
+- Integration IDs for card, wallet (and any others he wants)
+
+These go in as Cloudflare secrets (`wrangler secret put ...`), never in the code.
+Webhook URL to paste in Paymob: `https://<site address>/api/paymob/webhook`
+
+## Running it locally
+```
+cd website
+npm install
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+Then open http://127.0.0.1:4321. `.dev.vars` (local only) opens `/admin` without a login and uses a fake
+payment page so orders can be tested without money.
