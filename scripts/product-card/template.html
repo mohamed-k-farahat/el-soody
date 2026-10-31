@@ -1,0 +1,67 @@
+<!doctype html>
+<!--
+  The store's product image (1440 x 1440): the shop's "كل فنجان ليه حكاية" poster with this
+  product's name on the bag and in the red strip. Rendered by render-product-cards.py with
+  headless Chrome; the product comes in the URL hash: template.html#{"bag":["بن حبشي"],"strip":"البن الحبشي"}
+  For Ramadan or summer later: make a new base the same way and render again.
+-->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@700;800&family=Tajawal:wght@500&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1440px; height: 1440px; overflow: hidden; background: #000; }
+  .poster { position: relative; width: 1440px; height: 1440px; background: url("base.jpg") 0 0 / 1440px 1440px no-repeat; }
+
+  /* the product name printed on the bag, in the bag's gold */
+  .bag {
+    position: absolute; left: 352px; width: 420px; top: 940px; height: 160px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    font: 700 74px/1.25 "Almarai", sans-serif; letter-spacing: 0;
+    color: #E0C890;
+    background: linear-gradient(180deg, #EAD6A6 0%, #D8BD84 55%, #C7A86C 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,.35));
+    opacity: .96;
+  }
+  .bag span { display: block; white-space: nowrap; }
+
+  /* the red strip under the headline: same box as the poster's, so it covers the old words */
+  .strip {
+    position: absolute; left: 880px; top: 617px; width: 443px; height: 59px;
+    background: rgb(138, 72, 45);
+    display: flex; align-items: center; justify-content: center;
+    font: 500 30px/1 "Tajawal", sans-serif; color: #fff; white-space: nowrap; padding: 0 14px;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="strip" id="strip"></div>
+  <div class="bag" id="bag"></div>
+</div>
+<script>
+  const d = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}'));
+  const bag = document.getElementById('bag');
+  (d.bag || []).forEach((line) => { const s = document.createElement('span'); s.textContent = line; bag.appendChild(s); });
+  document.getElementById('strip').textContent = `وحكاية ${d.strip || ''} عنوانها الجودة`;
+
+  // shrink text that is too wide for its place
+  function fit(el, max, min, tooBig) {
+    let size = max;
+    el.style.fontSize = size + 'px';
+    while (size > min && tooBig()) { size -= 1; el.style.fontSize = size + 'px'; }
+  }
+  document.fonts.ready.then(() => {
+    const lines = bag.children.length;
+    fit(bag, lines > 1 ? 58 : 74, 36, () => [...bag.children].some((s) => s.scrollWidth > 400) || bag.scrollHeight > 160);
+    const strip = document.getElementById('strip');
+    fit(strip, 30, 18, () => strip.scrollWidth > strip.clientWidth);
+    document.body.dataset.ready = '1';
+  });
+</script>
+</body>
+</html>
