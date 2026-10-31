@@ -2,7 +2,7 @@
 // Shared shell for every public page: <head> with SEO tags, nav, cart drawer, footer.
 import { t, href, basePath, dir } from '../lib/i18n.js';
 import { STRINGS } from '../lib/strings.js';
-import { getSeo, getSettings } from '../lib/db.js';
+import { getSeo, getSettings, getBranches, loc } from '../lib/db.js';
 import { ICONS } from '../lib/icons.js';
 import { imageUrl } from '../lib/images.js';
 
@@ -18,7 +18,7 @@ const {
 } = Astro.props;
 
 const tr = (k) => t(lang, k);
-const [seo, settings] = await Promise.all([page ? getSeo(page) : {}, getSettings()]);
+const [seo, settings, branches] = await Promise.all([page ? getSeo(page) : {}, getSettings(), getBranches()]);
 const socials = [
   settings.instagram && ['instagram', settings.instagram, 'Instagram'],
   settings.facebook && ['facebook', settings.facebook, 'Facebook'],
@@ -118,21 +118,48 @@ const fonts = bookFonts
   </main>
 
   <footer class="footer" id="siteFooter">
-    <div class="container footer__inner">
-      <span class="logo-mark" aria-hidden="true"></span>
-      <p class="footer__tag">{tr('hero.tagline')}</p>
-      <nav class="footer__links" aria-label={tr('nav.label')}>
-        {NAV.map(([id, p]) => <a href={href(lang, p)}>{tr(`nav.${id}`)}</a>)}
-        <a href={href(lang, '/issues')}>{tr('footer.issues')}</a>
-        <a href={href(lang, '/suggestions')}>{tr('footer.suggestions')}</a>
-        <a href={href(lang, '/policies')}>{tr('footer.policies')}</a>
+    <div class="container footer__grid">
+      <div class="footer__brand">
+        <a href={href(lang, '/')} class="footer__logo">
+          <span class="logo-mark" aria-hidden="true"></span>
+          <span class="footer__name">{tr('brand')}</span>
+        </a>
+        <p class="footer__tag">{tr('hero.tagline')}</p>
+        {socials.length > 0 && (
+          <div class="socials footer__socials">
+            {socials.map(([icon, url, label]) => <a href={url} target="_blank" rel="noopener" aria-label={label} set:html={ICONS[icon]} />)}
+          </div>
+        )}
+      </div>
+      <nav class="footer__col" aria-labelledby="footExplore">
+        <h2 class="footer__h" id="footExplore">{tr('footer.explore')}</h2>
+        <ul>
+          {NAV.filter(([id]) => id !== 'contact').map(([id, p]) => <li><a href={href(lang, p)}>{tr(`nav.${id}`)}</a></li>)}
+        </ul>
       </nav>
-      {socials.length > 0 && (
-        <div class="socials footer__socials">
-          {socials.map(([icon, url, label]) => <a href={url} target="_blank" rel="noopener" aria-label={label} set:html={ICONS[icon]} />)}
+      <nav class="footer__col" aria-labelledby="footHelp">
+        <h2 class="footer__h" id="footHelp">{tr('footer.help')}</h2>
+        <ul>
+          <li><a href={href(lang, '/contact')}>{tr('nav.contact')}</a></li>
+          <li><a href={href(lang, '/issues')}>{tr('footer.issues')}</a></li>
+          <li><a href={href(lang, '/suggestions')}>{tr('footer.suggestions')}</a></li>
+          <li><a href={href(lang, '/policies')}>{tr('footer.policies')}</a></li>
+        </ul>
+      </nav>
+      {branches.length > 0 && (
+        <div class="footer__col footer__branches">
+          <h2 class="footer__h">{tr('contact.branches')}</h2>
+          <ul>
+            {branches.map((b) => (
+              <li><a href={href(lang, '/contact#branches')}><b>{loc(b, 'name', lang)}</b><small>{loc(b, 'address', lang)}</small></a></li>
+            ))}
+          </ul>
         </div>
       )}
-      <p class="footer__copy">© {new Date().getFullYear()} {tr('brand')}</p>
+    </div>
+    <div class="container footer__bar">
+      <p>© {new Date().getFullYear()} {tr('brand')}</p>
+      <p>{tr('footer.city')}</p>
     </div>
   </footer>
 
@@ -141,7 +168,7 @@ const fonts = bookFonts
     <aside class="cart-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
       <header class="cart-drawer__head">
         <h2 id="cartTitle">{tr('cart.title')}</h2>
-        <button class="cart-drawer__close" type="button" data-cart-close aria-label={tr('cart.close')}>×</button>
+        <button class="cart-drawer__close" type="button" data-cart-close aria-label={tr('cart.close')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
       </header>
       <div class="cart-drawer__body" id="cartLines"></div>
       <footer class="cart-drawer__foot" id="cartFoot" hidden>

@@ -4,6 +4,9 @@ export const CONTACT_STRINGS = {
     'nav.contact': 'كلّمنا',
     'footer.issues': 'بلّغ عن مشكلة',
     'footer.suggestions': 'اقتراحاتك',
+    'footer.explore': 'اتفرج',
+    'footer.help': 'محتاج حاجة؟',
+    'footer.city': 'طنطا، مصر',
 
     'contact.eyebrow': 'كلّمنا',
     'contact.title': 'إحنا قريبين منك',
@@ -61,6 +64,9 @@ export const CONTACT_STRINGS = {
     'nav.contact': 'Contact',
     'footer.issues': 'Report a problem',
     'footer.suggestions': 'Suggestions',
+    'footer.explore': 'Explore',
+    'footer.help': 'Need help?',
+    'footer.city': 'Tanta, Egypt',
 
     'contact.eyebrow': 'Contact us',
     'contact.title': 'We are close by',
