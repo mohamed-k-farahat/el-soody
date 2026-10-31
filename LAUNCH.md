@@ -1,8 +1,8 @@
 # Taking the El Soody store live
 
 The store runs on Cloudflare (site + database + photos) with Paymob for card and wallet payments.
-Everything is built and tested locally on the `store` branch. Going live needs accounts that only you
-and the owner can create.
+**Live now (cash on delivery):** https://el-soody.el-soody.workers.dev
+Cloudflare account: elsoodycoffee@gmail.com. Database, photo storage (KV) and the site are deployed.
 
 ## Do now (takes days to approve)
 
@@ -14,10 +14,10 @@ be online with the policies page (step 4 below gets it online with cash on deliv
 
 | # | Who | What |
 |---|---|---|
-| 1 | You | Create a free Cloudflare account at dash.cloudflare.com |
-| 2 | You | Approve the Cloudflare sign in when I run `npx wrangler login` (opens your browser, like the GitHub sign in) |
-| 3 | Me | Create the production database and photo storage, apply the schema and load the seed data (all products, stories, prices) |
-| 4 | Me | Deploy the site. It gets an address like `el-soody.<your-name>.workers.dev`. Cash on delivery works from here |
+| 1 | You | ✅ Create a free Cloudflare account at dash.cloudflare.com |
+| 2 | You | ✅ Approve the Cloudflare sign in when I run `npx wrangler login` (opens your browser, like the GitHub sign in) |
+| 3 | Me | ✅ Create the production database and photo storage, apply the schema and load the seed data (all products, stories, prices) |
+| 4 | Me | ✅ Deploy the site. It gets an address like `el-soody.<your-name>.workers.dev`. Cash on delivery works from here |
 | 5 | You | In Cloudflare, Zero Trust: create the admin login (Access application for `/admin`) with the owner's email. I'll guide you click by click, then put the two values it gives into the config |
 | 6 | Owner | Open `/admin`, fill in Settings: delivery fee, areas, shop phone, WhatsApp, address, hours. Check every price |
 | 7 | Owner | Read and adjust the Policies page wording (it is a starting draft, not legal advice) |
@@ -45,3 +45,10 @@ npm run dev
 ```
 Then open http://127.0.0.1:4321. `.dev.vars` (local only) opens `/admin` without a login and uses a fake
 payment page so orders can be tested without money.
+
+## Deploying an update
+```
+cd website
+npm run build
+npx wrangler deploy
+```
