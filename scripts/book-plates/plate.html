@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  A story book picture (1200 x 900): the photo, a thin gold frame line, the Soody logo in the
+  A story book picture (1200 x 900, or 900 x 1200 for a tall one): the photo, a thin gold frame line, the Soody logo in the
   corner on a soft dark fade, and the origin flag for single origin coffees. No words, so the
   same picture works in the Arabic and the English book.
   Rendered by render-book-plates.py; settings come in the URL hash.
@@ -10,7 +10,7 @@
 <meta charset="utf-8">
 <style>
   * { box-sizing: border-box; margin: 0; }
-  html, body { width: 1200px; height: 900px; overflow: hidden; background: #000; }
+  html, body { margin: 0; overflow: hidden; background: #000; }
   .plate { position: relative; width: 1200px; height: 900px; overflow: hidden; }
   .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(1.04) contrast(1.03); }
   /* warm the photo a touch toward the shop's coffee colours, and darken the corners */
@@ -38,6 +38,9 @@
 </div>
 <script>
   const d = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}'));
+  const plate = document.getElementById('plate');
+  plate.style.width = (d.w || 1200) + 'px';
+  plate.style.height = (d.h || 900) + 'px';
   const photo = document.getElementById('photo');
   photo.src = d.photo;
   photo.style.objectPosition = d.focus || '50% 50%';

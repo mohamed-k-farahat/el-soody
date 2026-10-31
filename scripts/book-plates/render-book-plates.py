@@ -39,32 +39,39 @@ PLATES = {
     "espresso": ("photo-1776548736734-0654a4d8b7ec", "50% 50%", "italy"),      # espresso pouring
     "green":    ("photo-1703646619157-eb553d16d402", "50% 50%", None),         # raw green coffee beans
     "french":   ("photo-1633040244595-19a2f7b24512", "50% 55%", None),         # chocolate, hazelnuts, cookies
+    # the "before you begin" page: the shop's own wall of bean dispensers (a tall print)
+    "intro":    ("local:../../public/media/dispensers.jpg", "50% 45%", None),
 }
+PORTRAIT = {"intro"}
 
 
 def photo(slug):
-    """The source photo, downloaded once at 1600 px."""
+    """The source photo: one of the shop's own (local:...) or an Unsplash one, downloaded once at 1600 px."""
+    pid = PLATES[slug][0]
+    if pid.startswith("local:"):
+        return pid[len("local:"):]
     PHOTOS.mkdir(exist_ok=True)
     path = PHOTOS / f"{slug}.jpg"
     if not path.exists():
-        pid = PLATES[slug][0]
         with urllib.request.urlopen(f"https://images.unsplash.com/{pid}?w=1600&q=85&fm=jpg", timeout=60) as r:
             path.write_bytes(r.read())
-    return path
+    return f"photos/{path.name}"
 
 
 def render(slug, tmp):
     pid, focus, flag = PLATES[slug]
-    data = urllib.parse.quote(json.dumps({"photo": f"photos/{photo(slug).name}", "focus": focus, "flag": flag}))
+    tall = slug in PORTRAIT
+    w, h = (900, 1200) if tall else (1200, 900)
+    data = urllib.parse.quote(json.dumps({"photo": photo(slug), "focus": focus, "flag": flag, "w": w, "h": h}))
     url = (HERE / "plate.html").as_uri() + "#" + data
     png = Path(tmp) / f"{slug}.png"
     subprocess.run([
         CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
-        "--window-size=1200,900", "--virtual-time-budget=6000", "--allow-file-access-from-files",
+        f"--window-size={w},{h}", "--virtual-time-budget=6000", "--allow-file-access-from-files",
         f"--screenshot={png}", url,
     ], check=True, capture_output=True)
     out = OUT / f"{slug}.webp"
-    Image.open(png).convert("RGB").resize((960, 720), Image.LANCZOS).save(out, "WEBP", quality=80, method=6)
+    Image.open(png).convert("RGB").resize((w * 4 // 5, h * 4 // 5), Image.LANCZOS).save(out, "WEBP", quality=80, method=6)
     return out
 
 

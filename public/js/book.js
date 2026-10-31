@@ -37,7 +37,6 @@
     if (src.startsWith('/media/beans/')) return `<img class="beans-img" src="${src}" alt="" decoding="async" draggable="false">`;
     return `<figure class="plate-photo" style="--tilt:${tilt}deg"><img src="${src}" alt="" decoding="async" draggable="false"></figure>`;
   };
-  const introBean = BEANS.find((b) => b.id === 'malaki') || BEANS[0];
 
   function roastLine(b) {
     if (!b.roasts.length) return `<span class="chip">${t('book.noRoast')}</span>`;
@@ -66,7 +65,7 @@
           <h3 class="pg__h">${t('book.introTitle')}</h3>
           <p>${t('book.intro1')}</p>
           <p>${t('book.intro2')}</p>
-          <div class="intro__art"><img class="beans-img" src="${drawing(introBean)}" alt="" decoding="async" draggable="false"></div>
+          <div class="intro__art"><figure class="plate-photo plate-photo--tall" style="--tilt:-1.5deg"><img src="/media/book/intro.webp" alt="" decoding="async" draggable="false"></figure></div>
           <p class="pg__sign">${t('book.intro3')}</p>
         </div>
         <span class="pg__num">${num(1)}</span>
