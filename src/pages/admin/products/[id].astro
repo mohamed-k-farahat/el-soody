@@ -160,27 +160,29 @@ const val = (k) => p[k] ?? '';
       <h2>سطور المنيو والأسعار</h2>
       <p class="hint">كل سطر = نوع (سادة/محوّج/فرنساوي) + درجات التحميص اللي بيتباع بيها + أسعار الأوزان بالجنيه. سيب الوزن فاضي لو مش بيتباع.</p>
       <div class="tablewrap">
-        <table class="t">
+        <!-- on phones each menu row becomes a card (t--grid in admin.css) -->
+        <table class="t t--grid">
           <thead><tr><th>القسم</th><th>التحميص</th><th>اسم السطر (اختياري)</th><th class="num">تُمن</th><th class="num">ربع</th><th class="num">كيلو</th><th>متاح</th><th>امسح</th></tr></thead>
           <tbody>
             {[...rows.map((r) => ({ r, prefix: `row${r.id}_` })), { r: null, prefix: 'new_' }].map(({ r, prefix }) => (
-              <tr>
-                <td>
+              <tr class={r ? '' : 'newrow'}>
+                <td data-label="القسم">
                   {!r && <b class="hint">سطر جديد</b>}
                   <select name={`${prefix}section`}>
                     {SECTIONS.map((s) => <option value={s} selected={r ? r.section === s : s === 'plain'}>{SECTION_AR[s]}</option>)}
                   </select>
                 </td>
-                <td style="white-space:nowrap">
+                <td data-label="التحميص" style="white-space:nowrap">
                   {ROAST_ORDER.map((x) => <label class="check" style="margin-inline-end:.5rem"><input type="checkbox" name={`${prefix}roast_${x}`} checked={r ? r.roasts.includes(x) : false}>{ROAST_AR[x]}</label>)}
                 </td>
-                <td>
+                <td data-label="اسم السطر (اختياري)">
                   <input type="text" name={`${prefix}label_ar`} value={r?.label_ar || ''} placeholder="مثلا: كراميل">
                   <input type="text" name={`${prefix}label_en`} value={r?.label_en || ''} placeholder="e.g. Caramel" dir="ltr" style="margin-top:.3rem">
                 </td>
-                {[125, 250, 1000].map((s) => <td class="num"><input type="number" name={`${prefix}p${s}`} value={r ? pounds(r.prices[s]) : ''} min="0" step="0.5" inputmode="decimal"></td>)}
-                <td>{r ? <input type="checkbox" name={`${prefix}available`} checked={r.available} aria-label="متاح"> : ''}</td>
-                <td>{r ? <input type="checkbox" name={`${prefix}delete`} aria-label="امسح السطر"> : ''}</td>
+                {[[125, 'تُمن'], [250, 'ربع'], [1000, 'كيلو']].map(([s, label]) => <td class="num" data-label={label}><input type="number" name={`${prefix}p${s}`} value={r ? pounds(r.prices[s]) : ''} min="0" step="0.5" inputmode="decimal" aria-label={label}></td>)}
+                {r && <td class="tick"><label class="check"><input type="checkbox" name={`${prefix}available`} checked={r.available} aria-label="متاح"><span class="show-sm">متاح</span></label></td>}
+                {r && <td class="tick"><label class="check"><input type="checkbox" name={`${prefix}delete`} aria-label="امسح السطر"><span class="show-sm">امسح السطر</span></label></td>}
+                {!r && <td colspan="2" class="hide-sm"></td>}
               </tr>
             ))}
           </tbody>

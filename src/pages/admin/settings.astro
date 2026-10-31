@@ -119,20 +119,20 @@ const ready = paymobReady();
     <section class="card">
       <h2>اختيارات الطحنة</h2>
       <div class="tablewrap">
-        <table class="t">
+        <table class="t t--grid">
           <thead><tr><th>بالعربي</th><th>English</th><th>ظاهر</th></tr></thead>
           <tbody>
             {grinds.map((g) => (
               <tr>
-                <td><input type="text" name={`grind_ar_${g.id}`} value={g.name_ar}></td>
-                <td><input type="text" name={`grind_en_${g.id}`} value={g.name_en} dir="ltr"></td>
-                <td><input type="checkbox" name={`grind_on_${g.id}`} checked={!!g.active} aria-label="ظاهر"></td>
+                <td><input type="text" name={`grind_ar_${g.id}`} value={g.name_ar} aria-label="بالعربي"></td>
+                <td><input type="text" name={`grind_en_${g.id}`} value={g.name_en} dir="ltr" aria-label="English"></td>
+                <td class="tick"><label class="check"><input type="checkbox" name={`grind_on_${g.id}`} checked={!!g.active} aria-label="ظاهر"><span class="show-sm">ظاهر</span></label></td>
               </tr>
             ))}
-            <tr>
-              <td><input type="text" name="grind_ar_new" placeholder="طحنة جديدة"></td>
-              <td><input type="text" name="grind_en_new" placeholder="New grind" dir="ltr"></td>
-              <td></td>
+            <tr class="newrow">
+              <td><input type="text" name="grind_ar_new" placeholder="طحنة جديدة" aria-label="طحنة جديدة بالعربي"></td>
+              <td><input type="text" name="grind_en_new" placeholder="New grind" dir="ltr" aria-label="New grind in English"></td>
+              <td class="hide-sm"></td>
             </tr>
           </tbody>
         </table>

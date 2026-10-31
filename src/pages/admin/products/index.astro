@@ -16,16 +16,16 @@ const { results: products } = await DB().prepare(`
   </div>
   <div class="tablewrap">
     <table class="t">
-      <thead><tr><th></th><th>المنتج</th><th class="hide-sm">في الكتاب</th><th>سطور المنيو</th><th>الحالة</th><th></th></tr></thead>
+      <thead><tr><th></th><th>المنتج</th><th class="hide-sm">في الكتاب</th><th class="hide-sm">سطور المنيو</th><th>الحالة</th><th class="hide-sm"></th></tr></thead>
       <tbody>
         {products.map((p) => (
           <tr>
             <td><img class="thumb" src={imageUrl(p.image)} alt="" loading="lazy"></td>
             <td><a class="rowlink" href={`/admin/products/${p.id}`}>{p.name_ar}</a><br><span class="hint">{p.name_en}</span></td>
             <td class="hide-sm">{p.in_book ? 'أيوه' : 'لأ'}</td>
-            <td>{p.rows}</td>
+            <td class="hide-sm">{p.rows}</td>
             <td>{p.active ? <span class="st st--completed">ظاهر</span> : <span class="st st--cancelled">مخفي</span>}</td>
-            <td><a class="btn btn--small" href={`/admin/products/${p.id}`}>تعديل</a></td>
+            <td class="hide-sm"><a class="btn btn--small" href={`/admin/products/${p.id}`}>تعديل</a></td>
           </tr>
         ))}
       </tbody>

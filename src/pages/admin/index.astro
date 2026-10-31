@@ -27,7 +27,7 @@ const { results: orders } = await DB().prepare(sql).bind(...binds).all();
 <Admin title="الطلبات" active="orders" refresh={60}>
   <div class="spread">
     <h1>الطلبات</h1>
-    <form class="row" method="get">
+    <form class="row search" method="get">
       <input type="hidden" name="tab" value={tab}>
       <input type="search" name="q" value={q} placeholder="رقم الطلب أو الموبايل أو الاسم" aria-label="بحث">
       <button class="btn">بحث</button>
@@ -42,18 +42,19 @@ const { results: orders } = await DB().prepare(sql).bind(...binds).all();
 
   {orders.length === 0 ? <p class="card">مفيش طلبات هنا.</p> : (
     <div class="tablewrap">
-      <table class="t">
-        <thead><tr><th>الطلب</th><th>الوقت</th><th>العميل</th><th class="hide-sm">الاستلام</th><th>الدفع</th><th>الإجمالي</th><th>الحالة</th></tr></thead>
+      <!-- on phones each row becomes a card (t--stack in admin.css) -->
+      <table class="t t--stack">
+        <thead><tr><th>الطلب</th><th>الوقت</th><th>العميل</th><th>الاستلام</th><th>الدفع</th><th>الإجمالي</th><th>الحالة</th></tr></thead>
         <tbody>
           {orders.map((o) => (
             <tr class={o.seen ? '' : 'unseen'}>
-              <td><a class="rowlink" href={`/admin/orders/${o.id}`} dir="ltr">{o.code}</a></td>
-              <td>{cairoTime(o.created_at)}</td>
-              <td>{o.name}<br><span class="hint" dir="ltr">{o.phone}</span></td>
-              <td class="hide-sm">{o.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</td>
-              <td>{o.payment_method === 'cod' ? 'كاش' : 'أونلاين'}<br><span class={`st st--${o.payment_status}`}>{PAY_AR[o.payment_status]}</span></td>
-              <td>{egp(o.total)}</td>
-              <td><span class={`st st--${o.status}`}>{STATUS_AR[o.status]}</span></td>
+              <td class="lead"><a class="rowlink" href={`/admin/orders/${o.id}`} dir="ltr">{o.code}</a> <span class={`st st--${o.status} show-sm`}>{STATUS_AR[o.status]}</span></td>
+              <td data-label="الوقت">{cairoTime(o.created_at)}</td>
+              <td data-label="العميل"><div>{o.name}<br><span class="hint" dir="ltr">{o.phone}</span></div></td>
+              <td data-label="الاستلام">{o.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</td>
+              <td data-label="الدفع"><div>{o.payment_method === 'cod' ? 'كاش' : 'أونلاين'} <span class={`st st--${o.payment_status}`}>{PAY_AR[o.payment_status]}</span></div></td>
+              <td data-label="الإجمالي"><b>{egp(o.total)}</b></td>
+              <td class="hide-sm"><span class={`st st--${o.status}`}>{STATUS_AR[o.status]}</span></td>
             </tr>
           ))}
         </tbody>

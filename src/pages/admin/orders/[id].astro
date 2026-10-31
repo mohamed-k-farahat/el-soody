@@ -59,15 +59,15 @@ const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أ
   <section class="card">
     <h2>الطلب</h2>
     <div class="tablewrap">
-      <table class="t">
+      <table class="t t--stack">
         <thead><tr><th>الصنف</th><th>الوزن</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
         <tbody>
           {order.items.map((i) => (
-            <tr><td><b>{i.name}</b><br><span class="hint">{i.details}</span></td><td>{SIZE[i.size] || `${i.size} جم`}</td><td>{i.qty}</td><td>{egp(i.unit_price)}</td><td>{egp(i.line_total)}</td></tr>
+            <tr><td class="lead"><div><b>{i.name}</b><br><span class="hint">{i.details}</span></div></td><td data-label="الوزن">{SIZE[i.size] || `${i.size} جم`}</td><td data-label="الكمية">{i.qty}</td><td data-label="السعر">{egp(i.unit_price)}</td><td data-label="الإجمالي">{egp(i.line_total)}</td></tr>
           ))}
-          <tr><td colspan="4">المجموع</td><td>{egp(order.subtotal)}</td></tr>
-          {order.fulfilment === 'delivery' && <tr><td colspan="4">التوصيل</td><td>{egp(order.delivery_fee)}</td></tr>}
-          <tr><td colspan="4"><b>الإجمالي</b></td><td><b>{egp(order.total)}</b></td></tr>
+          <tr class="sum"><td colspan="4">المجموع</td><td>{egp(order.subtotal)}</td></tr>
+          {order.fulfilment === 'delivery' && <tr class="sum"><td colspan="4">التوصيل</td><td>{egp(order.delivery_fee)}</td></tr>}
+          <tr class="sum"><td colspan="4"><b>الإجمالي</b></td><td><b>{egp(order.total)}</b></td></tr>
         </tbody>
       </table>
     </div>

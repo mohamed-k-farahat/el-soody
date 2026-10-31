@@ -52,7 +52,7 @@ h2 { font-size: 1.15rem; margin: 0 0 .8rem; }
 
 /* forms */
 label.f { display: grid; gap: .25rem; margin-bottom: .8rem; font-weight: 600; font-size: .92rem; }
-input[type="text"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="search"], textarea, select {
+input[type="text"], input[type="password"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="search"], textarea, select {
   width: 100%; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink); font: inherit;
 }
 input:focus, textarea:focus, select:focus { outline: 2px solid var(--orange); outline-offset: 0; border-color: var(--orange); }
@@ -102,10 +102,66 @@ table.t { width: 100%; border-collapse: collapse; }
 details.box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: .8rem 1.1rem; margin-bottom: 1rem; }
 details.box summary { cursor: pointer; font-weight: 700; }
 
+.show-sm { display: none; }
+.search input { flex: 1; min-width: 0; width: auto; }
+
 @media (max-width: 760px) {
   .grid2 { grid-template-columns: 1fr; }
   .abar__site { display: none; }
-  .hide-sm { display: none; }
+  .hide-sm { display: none !important; }
+  .show-sm { display: initial; }
+
+  /* top bar: brand and logout on the first line, all sections as equal tabs on the second */
+  .abar { padding: .5rem .75rem .6rem; gap: .5rem; }
+  .abar__brand { flex: 1; }
+  .abar__nav { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: .25rem; overflow: visible; }
+  .abar__nav a { padding: .45rem .2rem; text-align: center; font-size: .85rem; border-radius: 10px; background: rgba(255,255,255,.05); }
+  .abar__nav .badge--new { margin-inline-start: .15rem; padding: 0 .35rem; min-width: 0; }
+
+  .amain { padding: 1rem .75rem 4rem; }
+  h1 { font-size: 1.3rem; }
+  .card { padding: .9rem; }
+  .spread { margin-bottom: .8rem; }
+  .spread > * { flex: 1 1 100%; }
+  .spread .row:not(.search) .btn, .card > .row.no-print .btn { flex: 1; }
+  .search { flex-wrap: nowrap; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -.75rem; padding-inline: .75rem; }
+  .tabs a { white-space: nowrap; }
+  .facts { grid-template-columns: 1fr 1fr; }
+  .steps .btn { flex: 1 1 calc(50% - .4rem); }
+  .savebar .btn { flex: 1; padding-block: .75rem; }
+
+  /* compact tables (price grid, product list, grinds) */
+  .t th, .t td { padding: .5rem .35rem; }
+  .t .num { width: 64px; }
+  .t .num input { min-width: 0; padding-inline: .2rem; }
+
+  /* t--stack: every row becomes a card with "label  value" lines */
+  .tablewrap:has(.t--stack, .t--grid) { background: none; border: 0; border-radius: 0; overflow: visible; }
+  .t--stack, .t--stack tbody, .t--stack tr, .t--stack td,
+  .t--grid, .t--grid tbody { display: block; }
+  .t--stack thead, .t--grid thead { display: none; }
+  .t--stack tr, .t--grid tr { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .55rem .85rem; margin-bottom: .6rem; }
+  .t--stack tr.unseen { border-color: #FD9A19; border-inline-start-width: 4px; }
+  .t--stack td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .3rem 0; border: 0; text-align: end; }
+  .t--stack td > div { text-align: end; }
+  .t--stack td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: .82rem; font-weight: 700; text-align: start; }
+  .t--stack td.lead { text-align: start; font-size: 1.05rem; padding-bottom: .45rem; margin-bottom: .2rem; border-bottom: 1px solid var(--line); }
+  .t--stack td.lead > div { text-align: start; }
+  .t--stack tr.sum { display: flex; justify-content: space-between; background: none; border: 0; padding: .15rem .85rem; margin: 0; }
+  .t--stack tr.sum td { padding: 0; }
+  .card .t--stack tr:not(.sum) { background: #FBF7F1; }
+
+  /* t--grid: product menu rows as cards, three prices side by side */
+  .t--grid tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+  .t--grid tr.newrow { border-style: dashed; }
+  .t--grid td { display: block; grid-column: 1 / -1; padding: 0; border: 0; width: auto; white-space: normal !important; }
+  .t--grid td.num { grid-column: auto; width: auto; }
+  .t--grid td.tick { grid-column: span 1; }
+  .t--grid td.tick + td.tick { grid-column: span 2; }
+  .t--grid td[data-label]::before { content: attr(data-label); display: block; color: var(--muted); font-size: .82rem; font-weight: 700; margin-bottom: .2rem; }
+  .t--grid td.num input { padding-inline: .3rem; }
+  .card .t--grid tr { background: #FBF7F1; }
 }
 @media print {
   .abar, .no-print, .savebar, .flash { display: none !important; }
