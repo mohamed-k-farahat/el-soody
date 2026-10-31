@@ -35,6 +35,14 @@ export function mapItem(r) {
 /** value of a localized column, e.g. loc(p, 'name', 'en') -> p.name_en (falls back to Arabic) */
 export const loc = (row, field, lang) => row[`${field}_${lang}`] || row[`${field}_ar`] || '';
 
+// spice_addon_prices holds the 1/8, 1/4 and 1 kg prices in that order, e.g. "1000,2000,3000"
+function spiceBySize(s) {
+  if (s.spice_addon_enabled !== '1') return null;
+  const [p125, p250, p1000] = String(s.spice_addon_prices || '').split(',').map(Number);
+  const map = { 125: p125, 250: p250, 1000: p1000 };
+  return Object.values(map).every((n) => Number.isInteger(n) && n > 0) ? map : null;
+}
+
 export async function getSettings() {
   const { results } = await DB().prepare('SELECT key, value FROM settings').all();
   const s = Object.fromEntries(results.map((r) => [r.key, r.value]));
@@ -47,10 +55,8 @@ export async function getSettings() {
     online: s.online_enabled === '1',
     deliveryFee: num('delivery_fee'),
     freeDeliveryOver: num('free_delivery_over'),
-    // spice blend add-on for plain coffee, in piasters (empty when switched off)
-    spiceAddons: s.spice_addon_enabled === '1'
-      ? String(s.spice_addon_prices || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0)
-      : [],
+    // spice blend add-on for plain coffee: its price for each size, in piasters (null when switched off)
+    spiceBySize: spiceBySize(s),
   };
 }
 
