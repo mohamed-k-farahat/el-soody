@@ -23,7 +23,7 @@ be online with the policies page (step 4 below gets it online with cash on deliv
 | 7 | Owner | Read and adjust the Policies page wording (it is a starting draft, not legal advice) |
 | 8 | You | Optional but recommended: buy a domain (about $10 a year, e.g. elsoody.com) in Cloudflare, then I connect it |
 | 9 | Me | When Paymob approves: add the Paymob keys as secrets, set the webhook URL in the Paymob dashboard, test with Paymob test cards, then switch to live and turn on online payment in admin settings |
-| 10 | Me | Connect the GitHub repo so every push deploys automatically, and retire the old GitHub Pages site |
+| 10 | Me | ✅ Code is on GitHub (`main`); the old GitHub Pages site now redirects to the store (served from the `gh-pages` branch). Deploys are still manual (`npm run build` then `npx wrangler deploy`); automatic deploys on push can be added in Cloudflare (Workers, Settings, Builds, connect GitHub) |
 
 ## Paymob values needed at step 9
 From the Paymob dashboard (Developers / Settings):
