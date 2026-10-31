@@ -6,12 +6,14 @@
     {
       "binding": "DB",
       "database_name": "el-soody-db",
-      "database_id": "00000000-0000-0000-0000-000000000000", // set at launch (wrangler d1 create)
+      "database_id": "6b615cd5-d3a4-41ea-b0c4-56b4f928eebd",
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [
-    { "binding": "MEDIA", "bucket_name": "el-soody-media" }
+  // MEDIA: photos uploaded in admin. SESSION: required by the Astro adapter.
+  "kv_namespaces": [
+    { "binding": "MEDIA", "id": "b1d9e3a17d3b44d29ebdb3e8407542f2" },
+    { "binding": "SESSION", "id": "20fbb137c1de4f25973118affc487dfb" }
   ],
   "vars": {
     // "test" or "live" once Paymob keys are added as secrets. Local development uses "mock" from .dev.vars.

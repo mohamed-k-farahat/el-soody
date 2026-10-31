@@ -21,7 +21,8 @@ const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'we
 const MAX_IMAGE = 4 * 1024 * 1024;
 
 /**
- * Saves an uploaded photo to R2. Returns { value: 'r2:<key>' }, { value: null } if no file, or { error }.
+ * Saves an uploaded photo to Cloudflare KV. Returns { value: 'r2:<key>' }, { value: null } if no file, or { error }.
+ * (The "r2:" prefix just marks an uploaded photo served by /img/<key>.)
  */
 export async function saveUpload(file, prefix) {
   if (!file || typeof file === 'string' || !file.size) return { value: null };
@@ -29,7 +30,7 @@ export async function saveUpload(file, prefix) {
   if (!ext) return { error: 'الصورة لازم تكون JPG أو PNG أو WebP.' };
   if (file.size > MAX_IMAGE) return { error: 'الصورة أكبر من ٤ ميجا. صغّرها وجرّب تاني.' };
   const key = `${prefix}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
-  await env.MEDIA.put(key, file.stream(), { httpMetadata: { contentType: file.type } });
+  await env.MEDIA.put(key, await file.arrayBuffer(), { metadata: { contentType: file.type } });
   return { value: `r2:${key}` };
 }
 
