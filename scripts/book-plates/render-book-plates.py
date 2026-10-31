@@ -39,10 +39,12 @@ PLATES = {
     "espresso": ("photo-1776548736734-0654a4d8b7ec", "50% 50%", "italy"),      # espresso pouring
     "green":    ("photo-1703646619157-eb553d16d402", "50% 50%", None),         # raw green coffee beans
     "french":   ("photo-1633040244595-19a2f7b24512", "50% 55%", None),         # chocolate, hazelnuts, cookies
-    # the "before you begin" page: the shop's own wall of bean dispensers (a tall print)
-    "intro":    ("local:../../public/media/dispensers.jpg", "50% 45%", None),
+    # the "before you begin" page: a hot cup in the shop's own Soody cup (cropped from its poster,
+    # see intro-cup.jpg), with steam rising from it; a tall print
+    "intro":    ("local:intro-cup.jpg", "48% 50%", None),
 }
-PORTRAIT = {"intro"}
+TALL = {"intro": (900, 1040)}
+STEAM = {"intro": {"x": 44, "y": 46}}      # where the cup's mouth is, in % of the picture
 
 
 def photo(slug):
@@ -60,9 +62,8 @@ def photo(slug):
 
 def render(slug, tmp):
     pid, focus, flag = PLATES[slug]
-    tall = slug in PORTRAIT
-    w, h = (900, 1200) if tall else (1200, 900)
-    data = urllib.parse.quote(json.dumps({"photo": photo(slug), "focus": focus, "flag": flag, "w": w, "h": h}))
+    w, h = TALL.get(slug, (1200, 900))
+    data = urllib.parse.quote(json.dumps({"photo": photo(slug), "focus": focus, "flag": flag, "w": w, "h": h, "steam": STEAM.get(slug)}))
     url = (HERE / "plate.html").as_uri() + "#" + data
     png = Path(tmp) / f"{slug}.png"
     subprocess.run([
