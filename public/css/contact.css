@@ -101,7 +101,7 @@ html:lang(en) .branch__name { font-weight: 700; font-size: 1.2rem; }
 .feedback__other { text-align: center; color: var(--cream-dim); display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
 .feedback__other a { color: var(--orange); font-weight: 600; }
 
-.msgform__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+.msgform__fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 1rem; }
 .msgform__wide { grid-column: 1 / -1; }
 .msgform .field select, .msgform .field textarea { width: 100%; padding: .8rem 1rem; border-radius: 12px; background: var(--coffee-800); color: var(--cream); border: 1.5px solid rgba(243,230,211,.18); font: inherit; }
 .msgform .field select:focus { outline: none; border-color: var(--orange); }

@@ -149,6 +149,8 @@ html:lang(en) .checkout h1 { font-weight: 700; }
 .field label { font-weight: 600; font-size: .92rem; }
 .field input, .field textarea, .promo__row input { width: 100%; padding: .8rem 1rem; border-radius: 12px; background: var(--coffee-800); color: var(--cream); border: 1.5px solid rgba(243,230,211,.18); font: inherit; }
 .field input:focus, .field textarea:focus, .promo__row input:focus { outline: none; border-color: var(--orange); }
+/* message boxes: drag to make taller or shorter only, so they can't push past the form */
+.field textarea { resize: vertical; max-width: 100%; min-height: 3.4rem; max-height: 24rem; }
 .field input[aria-invalid="true"] { border-color: #ff7a5c; }
 .field__err { color: #ff9a7a; font-size: .85rem; min-height: 0; }
 .summary { position: sticky; top: 100px; }
