@@ -1,0 +1,128 @@
+---
+// Delivery, payment, shop contact details and grind options
+import Admin from '../../layouts/Admin.astro';
+import { DB, getSettings, setSettings, getGrinds } from '../../lib/db.js';
+import { toPiasters } from '../../lib/money.js';
+import { paymobReady, paymobMode } from '../../lib/paymob.js';
+import { str, flag } from '../../lib/admin.js';
+
+const errors = [];
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const fee = toPiasters(form.get('delivery_fee'));
+  const free = toPiasters(form.get('free_delivery_over'));
+  if (Number.isNaN(fee) || Number.isNaN(free)) errors.push('مصاريف التوصيل لازم تكون رقم.');
+
+  const values = {
+    pickup_enabled: flag(form, 'pickup_enabled'),
+    delivery_enabled: flag(form, 'delivery_enabled'),
+    delivery_fee: fee ?? 0,
+    free_delivery_over: free ?? 0,
+    delivery_area_ar: str(form, 'delivery_area_ar', 200),
+    delivery_area_en: str(form, 'delivery_area_en', 200),
+    cod_enabled: flag(form, 'cod_enabled'),
+    online_enabled: flag(form, 'online_enabled'),
+    shop_phone: str(form, 'shop_phone', 30),
+    shop_whatsapp: str(form, 'shop_whatsapp', 20).replace(/\D/g, ''),
+    address_ar: str(form, 'address_ar', 200), address_en: str(form, 'address_en', 200),
+    hours_ar: str(form, 'hours_ar', 200), hours_en: str(form, 'hours_en', 200),
+    maps_url: str(form, 'maps_url', 300),
+    instagram: str(form, 'instagram', 300), facebook: str(form, 'facebook', 300), tiktok: str(form, 'tiktok', 300),
+    order_email: str(form, 'order_email', 120),
+  };
+  if (!values.pickup_enabled && !values.delivery_enabled) errors.push('لازم طريقة استلام واحدة على الأقل.');
+  if (!values.cod_enabled && !values.online_enabled) errors.push('لازم طريقة دفع واحدة على الأقل.');
+  for (const k of ['maps_url', 'instagram', 'facebook', 'tiktok']) if (values[k] && !/^https:\/\//.test(values[k])) errors.push(`الرابط لازم يبدأ بـ https://`);
+
+  // grinds
+  const grinds = await getGrinds({ includeInactive: true });
+  const grindOps = grinds.map((g) => DB().prepare('UPDATE grinds SET name_ar = ?, name_en = ?, active = ? WHERE id = ?')
+    .bind(str(form, `grind_ar_${g.id}`, 60) || g.name_ar, str(form, `grind_en_${g.id}`, 60) || g.name_en, flag(form, `grind_on_${g.id}`), g.id));
+  const newAr = str(form, 'grind_ar_new', 60);
+  if (newAr) grindOps.push(DB().prepare('INSERT INTO grinds (name_ar, name_en, active, sort) VALUES (?, ?, 1, (SELECT coalesce(max(sort), 0) + 1 FROM grinds))').bind(newAr, str(form, 'grind_en_new', 60) || newAr));
+
+  if (!errors.length) {
+    await setSettings(values);
+    if (grindOps.length) await DB().batch(grindOps);
+    return Astro.redirect('/admin/settings?saved=1', 303);
+  }
+}
+
+const s = await getSettings();
+const grinds = await getGrinds({ includeInactive: true });
+const pounds = (p) => (p ? String(Number(p) / 100) : '0');
+const ready = paymobReady();
+---
+<Admin title="الإعدادات" active="settings">
+  <h1>الإعدادات</h1>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+
+  <form method="post">
+    <section class="card">
+      <h2>الاستلام والتوصيل</h2>
+      <div class="row" style="margin-bottom:.8rem">
+        <label class="check"><input type="checkbox" name="pickup_enabled" checked={s.pickup}> استلام من المحل</label>
+        <label class="check"><input type="checkbox" name="delivery_enabled" checked={s.delivery}> توصيل</label>
+      </div>
+      <div class="grid2">
+        <label class="f">مصاريف التوصيل (جنيه)<input type="number" name="delivery_fee" value={pounds(s.delivery_fee)} min="0" step="0.5"></label>
+        <label class="f">التوصيل مجاني للطلبات من (جنيه، ٠ = مفيش توصيل مجاني)<input type="number" name="free_delivery_over" value={pounds(s.free_delivery_over)} min="0" step="1"></label>
+        <label class="f">بنوصّل فين؟ (بيظهر للعميل)<input type="text" name="delivery_area_ar" value={s.delivery_area_ar} placeholder="مثلا: الدقي والمهندسين والعجوزة"></label>
+        <label class="f">Delivery area in English<input type="text" name="delivery_area_en" value={s.delivery_area_en} dir="ltr"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>الدفع</h2>
+      <div class="row">
+        <label class="check"><input type="checkbox" name="cod_enabled" checked={s.cod}> كاش عند الاستلام</label>
+        <label class="check"><input type="checkbox" name="online_enabled" checked={s.online}> دفع أونلاين (Paymob)</label>
+      </div>
+      {!ready && <p class="hint">الدفع الأونلاين مش هيظهر للعملاء لحد ما مفاتيح Paymob تتضاف للموقع.</p>}
+      {ready && paymobMode() === 'mock' && <p class="hint">وضع تجربة: الدفع الأونلاين بيفتح صفحة دفع وهمية، مفيش فلوس حقيقية.</p>}
+    </section>
+
+    <section class="card">
+      <h2>بيانات المحل</h2>
+      <p class="hint">بتظهر في صفحة المحل وفي زرار واتساب بعد الطلب.</p>
+      <div class="grid2">
+        <label class="f">تليفون المحل<input type="tel" name="shop_phone" value={s.shop_phone} dir="ltr"></label>
+        <label class="f">رقم الواتساب بكود الدولة (مثلا 201001234567)<input type="tel" name="shop_whatsapp" value={s.shop_whatsapp} dir="ltr"></label>
+        <label class="f">العنوان بالعربي<input type="text" name="address_ar" value={s.address_ar}></label>
+        <label class="f">Address in English<input type="text" name="address_en" value={s.address_en} dir="ltr"></label>
+        <label class="f">مواعيد العمل بالعربي<input type="text" name="hours_ar" value={s.hours_ar} placeholder="مثلا: كل يوم من ٩ الصبح لـ ١٢ بالليل"></label>
+        <label class="f">Opening hours in English<input type="text" name="hours_en" value={s.hours_en} dir="ltr"></label>
+        <label class="f">رابط جوجل ماب<input type="url" name="maps_url" value={s.maps_url} dir="ltr"></label>
+        <label class="f">إيميل يوصله إشعار بكل طلب جديد<input type="email" name="order_email" value={s.order_email} dir="ltr"><span class="hint">بيشتغل بعد ربط دومين المحل.</span></label>
+        <label class="f">Instagram<input type="url" name="instagram" value={s.instagram} dir="ltr"></label>
+        <label class="f">Facebook<input type="url" name="facebook" value={s.facebook} dir="ltr"></label>
+        <label class="f">TikTok<input type="url" name="tiktok" value={s.tiktok} dir="ltr"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>اختيارات الطحنة</h2>
+      <div class="tablewrap">
+        <table class="t">
+          <thead><tr><th>بالعربي</th><th>English</th><th>ظاهر</th></tr></thead>
+          <tbody>
+            {grinds.map((g) => (
+              <tr>
+                <td><input type="text" name={`grind_ar_${g.id}`} value={g.name_ar}></td>
+                <td><input type="text" name={`grind_en_${g.id}`} value={g.name_en} dir="ltr"></td>
+                <td><input type="checkbox" name={`grind_on_${g.id}`} checked={!!g.active} aria-label="ظاهر"></td>
+              </tr>
+            ))}
+            <tr>
+              <td><input type="text" name="grind_ar_new" placeholder="طحنة جديدة"></td>
+              <td><input type="text" name="grind_en_new" placeholder="New grind" dir="ltr"></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="savebar"><button class="btn btn--primary">احفظ الإعدادات</button></div>
+  </form>
+</Admin>

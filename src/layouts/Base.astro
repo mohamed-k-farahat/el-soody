@@ -3,6 +3,7 @@
 import { t, href, basePath, dir } from '../lib/i18n.js';
 import { STRINGS } from '../lib/strings.js';
 import { getSeo } from '../lib/db.js';
+import { imageUrl } from '../lib/images.js';
 
 const {
   lang = 'ar',
@@ -20,7 +21,7 @@ const seo = page ? await getSeo(page) : {};
 const pageTitle = title || seo[`title_${lang}`] || tr('meta.title.home');
 const pageDesc = description || seo[`desc_${lang}`] || tr('meta.desc');
 const site = Astro.site?.origin || Astro.url.origin;
-const shareImage = new URL(image || seo.image || '/media/sign-close.jpg', site).href;
+const shareImage = new URL(imageUrl(image || seo.image || '/media/sign-close.jpg'), site).href;
 
 const path = basePath(Astro.url.pathname);
 const canonical = new URL(href(lang, path), site).href;

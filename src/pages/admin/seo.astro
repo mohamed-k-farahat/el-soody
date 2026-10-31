@@ -1,0 +1,61 @@
+---
+// Page titles, descriptions and share images (what Google and WhatsApp/Facebook previews show)
+import Admin from '../../layouts/Admin.astro';
+import { DB } from '../../lib/db.js';
+import { imageUrl } from '../../lib/images.js';
+import { saveUpload, str } from '../../lib/admin.js';
+
+const PAGES = { home: 'الرئيسية', store: 'المتجر', stories: 'حكايات البن', menu: 'المنيو', shop: 'المحل' };
+
+const errors = [];
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const ops = [];
+  for (const page of Object.keys(PAGES)) {
+    const upload = await saveUpload(form.get(`image_${page}`), 'share');
+    if (upload.error) { errors.push(`${PAGES[page]}: ${upload.error}`); continue; }
+    const current = await DB().prepare('SELECT image FROM seo_pages WHERE page = ?').bind(page).first();
+    ops.push(DB().prepare(`
+      INSERT INTO seo_pages (page, title_ar, title_en, desc_ar, desc_en, image) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(page) DO UPDATE SET title_ar = excluded.title_ar, title_en = excluded.title_en,
+        desc_ar = excluded.desc_ar, desc_en = excluded.desc_en, image = excluded.image`)
+      .bind(page, str(form, `title_ar_${page}`, 120), str(form, `title_en_${page}`, 120),
+        str(form, `desc_ar_${page}`, 300), str(form, `desc_en_${page}`, 300),
+        upload.value || current?.image || '/media/sign-close.jpg'));
+  }
+  if (!errors.length) {
+    await DB().batch(ops);
+    return Astro.redirect('/admin/seo?saved=1', 303);
+  }
+}
+
+const { results } = await DB().prepare('SELECT * FROM seo_pages').all();
+const seo = Object.fromEntries(results.map((r) => [r.page, r]));
+---
+<Admin title="جوجل والمشاركة" active="seo">
+  <h1>جوجل والمشاركة</h1>
+  <p class="hint">العنوان والوصف بيظهروا في نتايج جوجل. الصورة بتظهر لما حد يبعت رابط الصفحة على واتساب أو فيسبوك. العنوان أحسن يكون أقل من ٦٠ حرف، والوصف أقل من ١٦٠.</p>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+
+  <form method="post" enctype="multipart/form-data">
+    {Object.entries(PAGES).map(([page, label]) => {
+      const r = seo[page] || {};
+      return (
+        <section class="card">
+          <h2>{label}</h2>
+          <div class="grid2">
+            <label class="f">العنوان بالعربي<input type="text" name={`title_ar_${page}`} value={r.title_ar || ''} maxlength="120"></label>
+            <label class="f">Title in English<input type="text" name={`title_en_${page}`} value={r.title_en || ''} maxlength="120" dir="ltr"></label>
+            <label class="f">الوصف بالعربي<textarea name={`desc_ar_${page}`} rows="2" maxlength="300">{r.desc_ar || ''}</textarea></label>
+            <label class="f">Description in English<textarea name={`desc_en_${page}`} rows="2" maxlength="300" dir="ltr">{r.desc_en || ''}</textarea></label>
+          </div>
+          <div class="row">
+            <img class="pimg" src={imageUrl(r.image)} alt="" loading="lazy">
+            <label class="f">صورة المشاركة (يفضّل عرضها أكبر من طولها)<input type="file" name={`image_${page}`} accept="image/jpeg,image/png,image/webp"></label>
+          </div>
+        </section>
+      );
+    })}
+    <div class="savebar"><button class="btn btn--primary">احفظ</button></div>
+  </form>
+</Admin>

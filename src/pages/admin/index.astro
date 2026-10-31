@@ -1,0 +1,64 @@
+---
+// Orders list
+import Admin from '../../layouts/Admin.astro';
+import { DB } from '../../lib/db.js';
+import { egp } from '../../lib/money.js';
+import { STATUS_AR, PAY_AR, cairoTime } from '../../lib/admin.js';
+
+const TABS = {
+  new: { label: 'جديدة', where: "status = 'new'" },
+  active: { label: 'شغالة', where: "status IN ('confirmed','preparing','ready','out')" },
+  done: { label: 'اتسلمت', where: "status = 'completed'" },
+  cancelled: { label: 'اتلغت', where: "status = 'cancelled'" },
+  all: { label: 'الكل', where: '1 = 1' },
+};
+const tab = TABS[Astro.url.searchParams.get('tab')] ? Astro.url.searchParams.get('tab') : 'new';
+const q = (Astro.url.searchParams.get('q') || '').trim().slice(0, 40);
+
+const counts = Object.fromEntries(await Promise.all(Object.entries(TABS).map(async ([k, v]) =>
+  [k, (await DB().prepare(`SELECT count(*) AS n FROM orders WHERE ${v.where}`).first()).n])));
+
+let sql = `SELECT id, code, created_at, status, fulfilment, payment_method, payment_status, name, phone, total, seen FROM orders WHERE ${TABS[tab].where}`;
+const binds = [];
+if (q) { sql += ' AND (code LIKE ? OR phone LIKE ? OR name LIKE ?)'; binds.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+sql += ' ORDER BY id DESC LIMIT 200';
+const { results: orders } = await DB().prepare(sql).bind(...binds).all();
+---
+<Admin title="الطلبات" active="orders" refresh={60}>
+  <div class="spread">
+    <h1>الطلبات</h1>
+    <form class="row" method="get">
+      <input type="hidden" name="tab" value={tab}>
+      <input type="search" name="q" value={q} placeholder="رقم الطلب أو الموبايل أو الاسم" aria-label="بحث">
+      <button class="btn">بحث</button>
+    </form>
+  </div>
+
+  <nav class="tabs" aria-label="حالة الطلبات">
+    {Object.entries(TABS).map(([k, v]) => (
+      <a href={`/admin?tab=${k}`} aria-current={k === tab ? 'true' : undefined}>{v.label} <span class="badge">{counts[k]}</span></a>
+    ))}
+  </nav>
+
+  {orders.length === 0 ? <p class="card">مفيش طلبات هنا.</p> : (
+    <div class="tablewrap">
+      <table class="t">
+        <thead><tr><th>الطلب</th><th>الوقت</th><th>العميل</th><th class="hide-sm">الاستلام</th><th>الدفع</th><th>الإجمالي</th><th>الحالة</th></tr></thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr class={o.seen ? '' : 'unseen'}>
+              <td><a class="rowlink" href={`/admin/orders/${o.id}`} dir="ltr">{o.code}</a></td>
+              <td>{cairoTime(o.created_at)}</td>
+              <td>{o.name}<br><span class="hint" dir="ltr">{o.phone}</span></td>
+              <td class="hide-sm">{o.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</td>
+              <td>{o.payment_method === 'cod' ? 'كاش' : 'أونلاين'}<br><span class={`st st--${o.payment_status}`}>{PAY_AR[o.payment_status]}</span></td>
+              <td>{egp(o.total)}</td>
+              <td><span class={`st st--${o.status}`}>{STATUS_AR[o.status]}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+  <p class="hint">الصفحة بتتحدث لوحدها كل دقيقة.</p>
+</Admin>

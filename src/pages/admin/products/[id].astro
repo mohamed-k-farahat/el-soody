@@ -1,0 +1,230 @@
+---
+// Add or edit a product: text in both languages, photo, book, SEO, and its menu rows with prices
+import Admin from '../../../layouts/Admin.astro';
+import { DB, getProduct, getItems, SECTIONS, ROAST_ORDER } from '../../../lib/db.js';
+import { toPiasters } from '../../../lib/money.js';
+import { imageUrl } from '../../../lib/images.js';
+import { SECTION_AR, ROAST_AR, saveUpload, str, flag } from '../../../lib/admin.js';
+
+const isNew = Astro.params.id === 'new';
+const id = isNew ? null : Number(Astro.params.id);
+let product = isNew ? null : await getProduct(id, { includeInactive: true });
+if (!isNew && !product) return new Response('Not found', { status: 404 });
+let rows = isNew ? [] : await getItems({ productId: id, includeUnavailable: true });
+
+const toStory = (text) => JSON.stringify(String(text || '').split(/\n\s*\n/).map((p) => p.replace(/\s+/g, ' ').trim()).filter(Boolean));
+const fromStory = (list) => (list || []).join('\n\n');
+const slugify = (s) => String(s).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+const pounds = (p) => (p == null ? '' : String(p / 100));
+
+const errors = [];
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+
+  if (form.get('action') === 'delete' && !isNew) {
+    await DB().batch([
+      DB().prepare('DELETE FROM items WHERE product_id = ?').bind(id),
+      DB().prepare('DELETE FROM products WHERE id = ?').bind(id),
+    ]);
+    return Astro.redirect('/admin/products?saved=deleted', 303);
+  }
+
+  const v = {
+    name_ar: str(form, 'name_ar', 120), name_en: str(form, 'name_en', 120),
+    slug: slugify(str(form, 'slug', 80)),
+    kind: form.get('kind') === 'other' ? 'other' : 'coffee',
+    origin_ar: str(form, 'origin_ar', 160), origin_en: str(form, 'origin_en', 160),
+    notes_ar: str(form, 'notes_ar', 240), notes_en: str(form, 'notes_en', 240),
+    story_ar: toStory(form.get('story_ar')), story_en: toStory(form.get('story_en')),
+    tip_ar: str(form, 'tip_ar', 240), tip_en: str(form, 'tip_en', 240),
+    tag_ar: str(form, 'tag_ar', 40), tag_en: str(form, 'tag_en', 40),
+    roasts: ROAST_ORDER.filter((r) => form.get(`roast_${r}`)).join(','),
+    color: /^#[0-9a-f]{6}$/i.test(str(form, 'color')) ? str(form, 'color') : '#6E4022',
+    in_book: flag(form, 'in_book'), active: flag(form, 'active'),
+    sort: Math.max(0, Math.min(9999, Number(form.get('sort')) || 0)),
+    seo_title_ar: str(form, 'seo_title_ar', 120), seo_title_en: str(form, 'seo_title_en', 120),
+    seo_desc_ar: str(form, 'seo_desc_ar', 300), seo_desc_en: str(form, 'seo_desc_en', 300),
+  };
+  if (!v.name_ar) errors.push('اكتب اسم المنتج بالعربي.');
+  if (!v.name_en) v.name_en = v.name_ar;
+  if (!v.slug) v.slug = slugify(v.name_en) || `product-${Date.now()}`;
+  const clash = await DB().prepare('SELECT id FROM products WHERE slug = ? AND id IS NOT ?').bind(v.slug, id).first();
+  if (clash) errors.push('الرابط ده مستخدم لمنتج تاني، غيّره.');
+
+  const upload = await saveUpload(form.get('image_file'), 'products');
+  if (upload.error) errors.push(upload.error);
+  const image = upload.value || (form.get('image_reset') ? '' : (product?.image || ''));
+
+  // menu rows
+  const rowOps = [];
+  const readRow = (prefix) => {
+    const prices = [125, 250, 1000].map((s) => toPiasters(form.get(`${prefix}p${s}`)));
+    return {
+      section: SECTIONS.includes(String(form.get(`${prefix}section`))) ? String(form.get(`${prefix}section`)) : 'plain',
+      roasts: ROAST_ORDER.filter((r) => form.get(`${prefix}roast_${r}`)).join(','),
+      label_ar: str(form, `${prefix}label_ar`, 80), label_en: str(form, `${prefix}label_en`, 80),
+      prices, available: flag(form, `${prefix}available`),
+    };
+  };
+  for (const r of rows) {
+    const p = `row${r.id}_`;
+    if (form.get(`${p}delete`)) { rowOps.push(['delete', r.id]); continue; }
+    const row = readRow(p);
+    if (row.prices.some(Number.isNaN)) errors.push('في سعر مش صحيح في سطور المنيو.');
+    else if (row.prices.every((x) => x === null)) errors.push('كل سطر في المنيو لازم يكون ليه سعر واحد على الأقل (أو علّم امسح).');
+    rowOps.push(['update', r.id, row]);
+  }
+  const fresh = readRow('new_');
+  if (fresh.prices.some((x) => x !== null)) {
+    if (fresh.prices.some(Number.isNaN)) errors.push('في سعر مش صحيح في السطر الجديد.');
+    else rowOps.push(['insert', null, { ...fresh, available: 1 }]);
+  }
+
+  if (!errors.length) {
+    const cols = Object.keys(v);
+    let productId = id;
+    if (isNew) {
+      const res = await DB().prepare(`INSERT INTO products (${cols.join(', ')}, image) VALUES (${cols.map(() => '?').join(', ')}, ?) RETURNING id`)
+        .bind(...Object.values(v), image).first();
+      productId = res.id;
+    } else {
+      await DB().prepare(`UPDATE products SET ${cols.map((c) => `${c} = ?`).join(', ')}, image = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(...Object.values(v), image, id).run();
+    }
+    const ops = rowOps.map(([kind, rowId, row]) => {
+      if (kind === 'delete') return DB().prepare('DELETE FROM items WHERE id = ? AND product_id = ?').bind(rowId, productId);
+      const vals = [row.section, row.roasts, row.label_ar, row.label_en || row.label_ar, ...row.prices, row.available];
+      if (kind === 'update') return DB().prepare('UPDATE items SET section = ?, roasts = ?, label_ar = ?, label_en = ?, price_125 = ?, price_250 = ?, price_1000 = ?, available = ? WHERE id = ? AND product_id = ?').bind(...vals, rowId, productId);
+      return DB().prepare("INSERT INTO items (product_id, section, roasts, label_ar, label_en, price_125, price_250, price_1000, available, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT coalesce(max(sort), 0) + 1 FROM items))").bind(productId, ...vals);
+    });
+    if (ops.length) await DB().batch(ops);
+    return Astro.redirect(`/admin/products/${productId}?saved=1`, 303);
+  }
+
+  // show the form again with what was typed
+  product = { ...(product || {}), ...v, roasts: v.roasts.split(',').filter(Boolean), story_ar: JSON.parse(v.story_ar), story_en: JSON.parse(v.story_en), image: product?.image || '' };
+}
+
+const p = product || { kind: 'coffee', color: '#6E4022', active: true, in_book: false, roasts: [], story_ar: [], story_en: [], sort: 50, image: '' };
+const val = (k) => p[k] ?? '';
+---
+<Admin title={isNew ? 'منتج جديد' : `تعديل ${p.name_ar}`} active="products">
+  <div class="spread">
+    <h1>{isNew ? 'منتج جديد' : p.name_ar}</h1>
+    <div class="row">
+      <a class="btn" href="/admin/products">← كل المنتجات</a>
+      {!isNew && p.active && <a class="btn" href={`/store/${p.slug}`} target="_blank" rel="noopener">شوفه في المتجر ↗</a>}
+    </div>
+  </div>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+
+  <form method="post" enctype="multipart/form-data">
+    <section class="card">
+      <h2>الأساسيات</h2>
+      <div class="grid2">
+        <label class="f">الاسم بالعربي *<input type="text" name="name_ar" value={val('name_ar')} required></label>
+        <label class="f">الاسم بالإنجليزي<input type="text" name="name_en" value={val('name_en')} dir="ltr"></label>
+        <label class="f">الأصل (البلد) بالعربي<input type="text" name="origin_ar" value={val('origin_ar')}></label>
+        <label class="f">Origin in English<input type="text" name="origin_en" value={val('origin_en')} dir="ltr"></label>
+        <label class="f">النكهة بالعربي<input type="text" name="notes_ar" value={val('notes_ar')}></label>
+        <label class="f">Flavor in English<input type="text" name="notes_en" value={val('notes_en')} dir="ltr"></label>
+        <label class="f">النوع
+          <select name="kind">
+            <option value="coffee" selected={p.kind === 'coffee'}>بن (بيتطحن، فيه اختيار طحنة)</option>
+            <option value="other" selected={p.kind === 'other'}>منتج تاني (نسكافيه، ميكس...)</option>
+          </select>
+        </label>
+        <label class="f">الرابط في الموقع
+          <input type="text" name="slug" value={val('slug')} dir="ltr" placeholder="يتعمل لوحده من الاسم الإنجليزي">
+          <span class="hint">بالإنجليزي من غير مسافات، مثلا: brazilian</span>
+        </label>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" name="active" checked={!!p.active}> ظاهر في الموقع</label>
+        <label class="f" style="margin:0 1rem 0 0;display:flex;align-items:center;gap:.5rem">الترتيب <input type="number" name="sort" value={val('sort')} style="width:90px"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>الصورة</h2>
+      <div class="row">
+        <img class="pimg" src={imageUrl(p.image)} alt="">
+        <div>
+          <label class="f">ارفع صورة جديدة (JPG أو PNG أو WebP، لحد ٤ ميجا)<input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+          {p.image && <label class="check"><input type="checkbox" name="image_reset"> شيل الصورة الحالية</label>}
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>سطور المنيو والأسعار</h2>
+      <p class="hint">كل سطر = نوع (سادة/محوّج/فرنساوي) + درجات التحميص اللي بيتباع بيها + أسعار الأوزان بالجنيه. سيب الوزن فاضي لو مش بيتباع.</p>
+      <div class="tablewrap">
+        <table class="t">
+          <thead><tr><th>القسم</th><th>التحميص</th><th>اسم السطر (اختياري)</th><th class="num">تُمن</th><th class="num">ربع</th><th class="num">كيلو</th><th>متاح</th><th>امسح</th></tr></thead>
+          <tbody>
+            {[...rows.map((r) => ({ r, prefix: `row${r.id}_` })), { r: null, prefix: 'new_' }].map(({ r, prefix }) => (
+              <tr>
+                <td>
+                  {!r && <b class="hint">سطر جديد</b>}
+                  <select name={`${prefix}section`}>
+                    {SECTIONS.map((s) => <option value={s} selected={r ? r.section === s : s === 'plain'}>{SECTION_AR[s]}</option>)}
+                  </select>
+                </td>
+                <td style="white-space:nowrap">
+                  {ROAST_ORDER.map((x) => <label class="check" style="margin-inline-end:.5rem"><input type="checkbox" name={`${prefix}roast_${x}`} checked={r ? r.roasts.includes(x) : false}>{ROAST_AR[x]}</label>)}
+                </td>
+                <td>
+                  <input type="text" name={`${prefix}label_ar`} value={r?.label_ar || ''} placeholder="مثلا: كراميل">
+                  <input type="text" name={`${prefix}label_en`} value={r?.label_en || ''} placeholder="e.g. Caramel" dir="ltr" style="margin-top:.3rem">
+                </td>
+                {[125, 250, 1000].map((s) => <td class="num"><input type="number" name={`${prefix}p${s}`} value={r ? pounds(r.prices[s]) : ''} min="0" step="0.5" inputmode="decimal"></td>)}
+                <td>{r ? <input type="checkbox" name={`${prefix}available`} checked={r.available} aria-label="متاح"> : ''}</td>
+                <td>{r ? <input type="checkbox" name={`${prefix}delete`} aria-label="امسح السطر"> : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>كتاب الحكايات</h2>
+      <label class="check"><input type="checkbox" name="in_book" checked={!!p.in_book}> اعرضه في كتاب حكايات البن</label>
+      <div class="row" style="margin:.8rem 0">
+        <span>درجات التحميص اللي بتظهر في الكتاب:</span>
+        {ROAST_ORDER.map((x) => <label class="check"><input type="checkbox" name={`roast_${x}`} checked={(p.roasts || []).includes(x)}>{ROAST_AR[x]}</label>)}
+        <label class="check">لون الحبة في الرسم <input type="color" name="color" value={val('color')}></label>
+      </div>
+      <div class="grid2">
+        <label class="f">الحكاية بالعربي<textarea name="story_ar" rows="7">{fromStory(p.story_ar)}</textarea><span class="hint">سيب سطر فاضي بين كل فقرة.</span></label>
+        <label class="f">The story in English<textarea name="story_en" rows="7" dir="ltr">{fromStory(p.story_en)}</textarea></label>
+        <label class="f">نصيحة السعودي بالعربي<input type="text" name="tip_ar" value={val('tip_ar')}></label>
+        <label class="f">Tip in English<input type="text" name="tip_en" value={val('tip_en')} dir="ltr"></label>
+        <label class="f">شارة صغيرة بالعربي (اختياري)<input type="text" name="tag_ar" value={val('tag_ar')}></label>
+        <label class="f">Badge in English<input type="text" name="tag_en" value={val('tag_en')} dir="ltr"></label>
+      </div>
+    </section>
+
+    <details class="box">
+      <summary>جوجل والمشاركة (اختياري)</summary>
+      <p class="hint">لو سبتهم فاضيين، الموقع بيستخدم الاسم والنكهة.</p>
+      <div class="grid2">
+        <label class="f">عنوان الصفحة بالعربي<input type="text" name="seo_title_ar" value={val('seo_title_ar')}></label>
+        <label class="f">Page title in English<input type="text" name="seo_title_en" value={val('seo_title_en')} dir="ltr"></label>
+        <label class="f">وصف قصير بالعربي<textarea name="seo_desc_ar" rows="2">{val('seo_desc_ar')}</textarea></label>
+        <label class="f">Short description in English<textarea name="seo_desc_en" rows="2" dir="ltr">{val('seo_desc_en')}</textarea></label>
+      </div>
+    </details>
+
+    <div class="savebar"><button class="btn btn--primary">احفظ</button></div>
+  </form>
+
+  {!isNew && (
+    <form method="post" class="card" onsubmit="return confirm('متأكد إنك عايز تمسح المنتج ده نهائيًا؟ الطلبات القديمة مش هتتأثر.')">
+      <h2>امسح المنتج</h2>
+      <p class="hint">لو عايز توقفه مؤقتًا، شيل علامة «ظاهر في الموقع» بدل ما تمسحه.</p>
+      <button class="btn btn--danger" name="action" value="delete">امسح نهائيًا</button>
+    </form>
+  )}
+</Admin>

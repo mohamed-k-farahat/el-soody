@@ -1,0 +1,49 @@
+---
+// Shell for the owner's admin panel (Arabic, works on a phone).
+import { DB } from '../lib/db.js';
+
+const { title = 'لوحة التحكم', active = '', refresh = 0 } = Astro.props;
+const newCount = (await DB().prepare("SELECT count(*) AS n FROM orders WHERE status = 'new'").first()).n;
+const NAV = [
+  ['orders', '/admin', 'الطلبات'],
+  ['prices', '/admin/prices', 'الأسعار'],
+  ['products', '/admin/products', 'المنتجات'],
+  ['settings', '/admin/settings', 'الإعدادات'],
+  ['seo', '/admin/seo', 'جوجل والمشاركة'],
+];
+const saved = Astro.url.searchParams.get('saved');
+---
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  {refresh > 0 && <meta http-equiv="refresh" content={String(refresh)}>}
+  <title>{title} | إدارة بن السعودي</title>
+  <link rel="icon" type="image/png" href="/media/logo-sm.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="abar">
+    <a class="abar__brand" href="/admin"><span class="logo-mark" aria-hidden="true"></span> إدارة بن السعودي</a>
+    <nav class="abar__nav" aria-label="أقسام لوحة التحكم">
+      {NAV.map(([id, href, label]) => (
+        <a href={href} aria-current={id === active ? 'page' : undefined}>
+          {label}
+          {id === 'orders' && newCount > 0 && <span class="badge badge--new">{newCount}</span>}
+        </a>
+      ))}
+    </nav>
+    <a class="abar__site" href="/" target="_blank" rel="noopener">افتح الموقع ↗</a>
+  </header>
+
+  <main class="amain">
+    {saved && <p class="flash" role="status">{saved === 'deleted' ? 'اتمسح.' : 'اتحفظ.'}</p>}
+    <slot />
+  </main>
+</body>
+</html>

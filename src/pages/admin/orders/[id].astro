@@ -1,0 +1,96 @@
+---
+// One order: details, status, payment, contact the customer, print
+import Admin from '../../../layouts/Admin.astro';
+import { DB } from '../../../lib/db.js';
+import { getOrderById, STATUSES, PAY_STATUSES } from '../../../lib/orders.js';
+import { egp } from '../../../lib/money.js';
+import { STATUS_AR, PAY_AR, cairoTime, waNumber } from '../../../lib/admin.js';
+
+const id = Number(Astro.params.id);
+let order = Number.isInteger(id) ? await getOrderById(id) : null;
+if (!order) return new Response('Not found', { status: 404 });
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const status = String(form.get('status') || '');
+  const pay = String(form.get('payment_status') || '');
+  if (STATUSES.includes(status)) {
+    await DB().prepare("UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?").bind(status, id).run();
+  }
+  // online payments are set by Paymob; the owner can still record a refund
+  const payAllowed = order.payment_method === 'cod' ? ['unpaid', 'paid'] : ['refunded'];
+  if (PAY_STATUSES.includes(pay) && payAllowed.includes(pay)) {
+    await DB().prepare("UPDATE orders SET payment_status = ?, updated_at = datetime('now') WHERE id = ?").bind(pay, id).run();
+  }
+  return Astro.redirect(`/admin/orders/${id}?saved=1`, 303);
+}
+
+if (!order.seen) await DB().prepare('UPDATE orders SET seen = 1 WHERE id = ?').bind(id).run();
+
+const SIZE = { 125: '١٢٥ جم', 250: '٢٥٠ جم', 1000: 'كيلو' };
+const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أهلا ${order.name}، بخصوص طلبك ${order.code} من بن السعودي`)}`;
+---
+<Admin title={`طلب ${order.code}`} active="orders">
+  <div class="spread">
+    <h1>طلب <span dir="ltr">{order.code}</span> <span class={`st st--${order.status}`}>{STATUS_AR[order.status]}</span></h1>
+    <div class="row no-print">
+      <a class="btn" href="/admin">← كل الطلبات</a>
+      <button class="btn" type="button" onclick="window.print()">اطبع</button>
+    </div>
+  </div>
+
+  <section class="card">
+    <dl class="facts">
+      <div><dt>الوقت</dt><dd>{cairoTime(order.created_at)}</dd></div>
+      <div><dt>العميل</dt><dd>{order.name}</dd></div>
+      <div><dt>الموبايل</dt><dd dir="ltr">{order.phone}</dd></div>
+      <div><dt>الاستلام</dt><dd>{order.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</dd></div>
+      {order.fulfilment === 'delivery' && <div style="grid-column: 1 / -1"><dt>العنوان</dt><dd>{order.address}</dd></div>}
+      <div><dt>الدفع</dt><dd>{order.payment_method === 'cod' ? 'كاش عند الاستلام' : 'أونلاين'} <span class={`st st--${order.payment_status}`}>{PAY_AR[order.payment_status]}</span></dd></div>
+      <div><dt>لغة العميل</dt><dd>{order.lang === 'en' ? 'English' : 'عربي'}</dd></div>
+      {order.notes && <div style="grid-column: 1 / -1"><dt>ملاحظات العميل</dt><dd>{order.notes}</dd></div>}
+    </dl>
+    <div class="row no-print" style="margin-top:.9rem">
+      <a class="btn" href={`tel:${order.phone}`}>📞 اتصل</a>
+      <a class="btn" href={wa} target="_blank" rel="noopener">واتساب</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>الطلب</h2>
+    <div class="tablewrap">
+      <table class="t">
+        <thead><tr><th>الصنف</th><th>الوزن</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+        <tbody>
+          {order.items.map((i) => (
+            <tr><td><b>{i.name}</b><br><span class="hint">{i.details}</span></td><td>{SIZE[i.size] || `${i.size} جم`}</td><td>{i.qty}</td><td>{egp(i.unit_price)}</td><td>{egp(i.line_total)}</td></tr>
+          ))}
+          <tr><td colspan="4">المجموع</td><td>{egp(order.subtotal)}</td></tr>
+          {order.fulfilment === 'delivery' && <tr><td colspan="4">التوصيل</td><td>{egp(order.delivery_fee)}</td></tr>}
+          <tr><td colspan="4"><b>الإجمالي</b></td><td><b>{egp(order.total)}</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <form class="card no-print" method="post">
+    <h2>غيّر الحالة</h2>
+    <div class="steps">
+      {STATUSES.filter((s) => order.fulfilment === 'delivery' || s !== 'out').map((s) => (
+        <button class={`btn${s === 'cancelled' ? ' btn--danger' : ''}`} name="status" value={s} aria-pressed={order.status === s ? 'true' : 'false'}>{STATUS_AR[s]}</button>
+      ))}
+    </div>
+    {order.payment_method === 'cod' && (
+      <>
+        <h2 style="margin-top:1.2rem">الفلوس</h2>
+        <div class="steps">
+          <button class="btn" name="payment_status" value="paid" aria-pressed={order.payment_status === 'paid' ? 'true' : 'false'}>استلمت الفلوس</button>
+          <button class="btn" name="payment_status" value="unpaid" aria-pressed={order.payment_status === 'unpaid' ? 'true' : 'false'}>لسه</button>
+        </div>
+      </>
+    )}
+    {order.payment_method === 'online' && order.payment_status === 'paid' && (
+      <p class="hint" style="margin-top:1rem">الدفع اتأكد من Paymob. لو رجّعت الفلوس من لوحة Paymob: <button class="btn btn--small" name="payment_status" value="refunded">سجّل إنها اترجعت</button></p>
+    )}
+  </form>
+</Admin>

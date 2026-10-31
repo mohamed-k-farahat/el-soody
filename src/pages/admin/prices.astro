@@ -1,0 +1,70 @@
+---
+// The whole menu as one editable price grid (fast monthly price updates)
+import Admin from '../../layouts/Admin.astro';
+import { DB, mapItem } from '../../lib/db.js';
+import { toPiasters } from '../../lib/money.js';
+import { SECTION_AR, ROAST_AR } from '../../lib/admin.js';
+
+const errors = [];
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const ids = String(form.get('ids') || '').split(',').map(Number).filter(Number.isInteger);
+  const updates = [];
+  for (const id of ids) {
+    const prices = [125, 250, 1000].map((s) => toPiasters(form.get(`p${s}_${id}`)));
+    if (prices.some((p) => Number.isNaN(p))) { errors.push(`سعر مش صحيح في السطر رقم ${id}`); continue; }
+    if (prices.every((p) => p === null)) { errors.push(`السطر رقم ${id} لازم يكون ليه سعر واحد على الأقل`); continue; }
+    updates.push(DB().prepare('UPDATE items SET price_125 = ?, price_250 = ?, price_1000 = ?, available = ? WHERE id = ?')
+      .bind(...prices, form.get(`avail_${id}`) ? 1 : 0, id));
+  }
+  if (!errors.length) {
+    if (updates.length) await DB().batch(updates);
+    return Astro.redirect('/admin/prices?saved=1', 303);
+  }
+}
+
+const { results } = await DB().prepare(`
+  SELECT i.*, p.name_ar, p.active AS product_active, p.id AS pid
+  FROM items i JOIN products p ON p.id = i.product_id
+  ORDER BY CASE i.section WHEN 'plain' THEN 1 WHEN 'spiced' THEN 2 ELSE 3 END, i.sort, i.id`).all();
+const rows = results.map(mapItem);
+const pounds = (p) => (p == null ? '' : String(p / 100));
+let lastSection = '';
+---
+<Admin title="الأسعار" active="prices">
+  <h1>الأسعار</h1>
+  <p class="hint">الأسعار بالجنيه. سيب الخانة فاضية لو الوزن ده مش بيتباع. أي تغيير بيظهر فورًا في المتجر والمنيو.</p>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+
+  <form method="post">
+    <input type="hidden" name="ids" value={rows.map((r) => r.id).join(',')}>
+    <div class="tablewrap">
+      <table class="t">
+        <thead><tr><th>الصنف</th><th class="num">تُمن</th><th class="num">ربع</th><th class="num">كيلو</th><th>متاح</th></tr></thead>
+        <tbody>
+          {rows.map((r) => {
+            const header = r.section !== lastSection ? (lastSection = r.section, true) : false;
+            return (
+              <>
+                {header && <tr class="section-row"><td colspan="5">{SECTION_AR[r.section]}</td></tr>}
+                <tr>
+                  <td>
+                    <a class="rowlink" href={`/admin/products/${r.pid}`}>{r.name_ar}</a>
+                    {r.label_ar && <span> ، {r.label_ar}</span>}
+                    {r.roasts.length > 0 && <span class="hint"> ({r.roasts.map((x) => ROAST_AR[x]).join('، ')})</span>}
+                    {!r.product_active && <span class="st st--cancelled">المنتج مخفي</span>}
+                  </td>
+                  {[125, 250, 1000].map((s) => (
+                    <td class="num"><input type="number" name={`p${s}_${r.id}`} value={pounds(r.prices[s])} min="0" step="0.5" inputmode="decimal" aria-label={`${r.name_ar} ${s} جم`}></td>
+                  ))}
+                  <td><label class="check"><input type="checkbox" name={`avail_${r.id}`} checked={r.available}><span class="hide-sm">متاح</span></label></td>
+                </tr>
+              </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <div class="savebar"><button class="btn btn--primary">احفظ الأسعار</button></div>
+  </form>
+</Admin>
