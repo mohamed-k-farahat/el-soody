@@ -1,8 +1,9 @@
 <!doctype html>
 <!--
   The store's product image (1440 x 1440): the shop's "كل فنجان ليه حكاية" poster with this
-  product's name on the bag and in the red strip. Rendered by render-product-cards.py with
-  headless Chrome; the product comes in the URL hash: template.html#{"bag":["بن حبشي"],"strip":"البن الحبشي"}
+  product's name on the bag and in the red strip, plus the things that go with it on the table
+  (its own beans, the dallah for Arabic coffee, hazelnuts for French coffee...).
+  Rendered by render-product-cards.py with headless Chrome; the product comes in the URL hash.
   For Ramadan or summer later: make a new base the same way and render again.
 -->
 <html lang="ar" dir="rtl">
@@ -15,6 +16,7 @@
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1440px; height: 1440px; overflow: hidden; background: #000; }
   .poster { position: relative; width: 1440px; height: 1440px; background: url("base.jpg") 0 0 / 1440px 1440px no-repeat; }
+  .poster.no-cup { background-image: url("base-nocup.jpg"); }
 
   /* the product name printed on the bag, in the bag's gold */
   .bag {
@@ -36,18 +38,74 @@
     display: flex; align-items: center; justify-content: center;
     font: 500 30px/1 "Tajawal", sans-serif; color: #fff; white-space: nowrap; padding: 0 14px;
   }
+
+  /* things on the table: positioned by their bottom centre (where they touch the table) */
+  .prop { position: absolute; transform: translate(-50%, -100%); }
+  .prop img { display: block; width: 100%; height: auto; filter: drop-shadow(-10px 6px 10px rgba(40, 22, 10, .45)); }
+  /* soft contact shadow on the table under each prop */
+  .prop::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -10px; height: 26px; z-index: -1;
+    background: radial-gradient(ellipse at center, rgba(30,16,6,.55), rgba(30,16,6,0) 70%); }
+  .prop--flat::after { display: none; }
+  /* the bean drawings: a touch softer and warmer so they sit in the photo */
+  .prop--flat img { filter: blur(.5px) saturate(.88) brightness(.9) contrast(1.05) drop-shadow(-5px 4px 3px rgba(35, 18, 6, .55)); }
+  .prop.warm img { filter: sepia(.22) saturate(1.05) brightness(.95) drop-shadow(-10px 6px 10px rgba(40, 22, 10, .45)); }
+
+  /* gold stamp on the wall: what makes this coffee itself (origin and flag, or its character) */
+  .stamp {
+    position: absolute; left: 1118px; top: 92px; width: 236px; height: 236px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center;
+    border: 3px solid rgba(214, 186, 128, .95);
+    box-shadow: inset 0 0 0 9px rgba(24, 16, 10, .94), inset 0 0 0 11px rgba(214, 186, 128, .55), 0 12px 26px rgba(40, 22, 10, .28);
+    background: radial-gradient(circle at 40% 35%, rgba(52, 36, 22, .92), rgba(24, 16, 10, .94));
+    color: #E7D2A2; font-family: "Almarai", sans-serif;
+  }
+  .stamp__top { font-size: 22px; font-weight: 700; opacity: .8; }
+  .stamp__main { font-size: 40px; font-weight: 800; line-height: 1.1; color: #F1DFB4; padding: 0 18px; white-space: nowrap; }
+  .stamp__flag { display: flex; width: 86px; height: 14px; border-radius: 3px; overflow: hidden; margin-top: 4px; box-shadow: 0 0 0 1.5px rgba(214, 186, 128, .7); }
+  .stamp__flag i { flex: 1; }
+  .stamp__flag--v { flex-direction: column; height: 30px; width: 58px; }
 </style>
 </head>
 <body>
-<div class="poster">
+<div class="poster" id="poster">
   <div class="strip" id="strip"></div>
   <div class="bag" id="bag"></div>
 </div>
 <script>
   const d = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}'));
+  const poster = document.getElementById('poster');
+  if (d.noCup) poster.classList.add('no-cup');
+
   const bag = document.getElementById('bag');
   (d.bag || []).forEach((line) => { const s = document.createElement('span'); s.textContent = line; bag.appendChild(s); });
   document.getElementById('strip').textContent = `وحكاية ${d.strip || ''} عنوانها الجودة`;
+
+  // props: { src, x, y (bottom centre), w, flat (no contact shadow), flip }
+  (d.props || []).forEach((p) => {
+    const box = document.createElement('div');
+    box.className = 'prop' + (p.flat ? ' prop--flat' : '') + (p.warm ? ' warm' : '');
+    box.style.cssText = `left:${p.x}px; top:${p.y}px; width:${p.w}px;`;
+    const img = document.createElement('img');
+    img.src = p.src;
+    if (p.flip) img.style.transform = 'scaleX(-1)';
+    box.appendChild(img);
+    poster.appendChild(box);
+  });
+
+  // stamp: { top, main, flag: [colours], vertical: stripes stacked top to bottom }
+  if (d.stamp) {
+    const st = document.createElement('div');
+    st.className = 'stamp';
+    if (d.stamp.top) { const t = document.createElement('span'); t.className = 'stamp__top'; t.textContent = d.stamp.top; st.appendChild(t); }
+    const m = document.createElement('span'); m.className = 'stamp__main'; m.id = 'stampMain'; m.textContent = d.stamp.main; st.appendChild(m);
+    if (d.stamp.flag) {
+      const f = document.createElement('span');
+      f.className = 'stamp__flag' + (d.stamp.vertical ? ' stamp__flag--v' : '');
+      d.stamp.flag.forEach((c) => { const i = document.createElement('i'); i.style.background = c; f.appendChild(i); });
+      st.appendChild(f);
+    }
+    poster.appendChild(st);
+  }
 
   // shrink text that is too wide for its place
   function fit(el, max, min, tooBig) {
@@ -55,11 +113,13 @@
     el.style.fontSize = size + 'px';
     while (size > min && tooBig()) { size -= 1; el.style.fontSize = size + 'px'; }
   }
-  document.fonts.ready.then(() => {
+  Promise.all([document.fonts.ready, ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => {
     const lines = bag.children.length;
     fit(bag, lines > 1 ? 58 : 74, 36, () => [...bag.children].some((s) => s.scrollWidth > 400) || bag.scrollHeight > 160);
     const strip = document.getElementById('strip');
     fit(strip, 30, 18, () => strip.scrollWidth > strip.clientWidth);
+    const stampMain = document.getElementById('stampMain');
+    if (stampMain) fit(stampMain, 40, 22, () => stampMain.scrollWidth > 196);
     document.body.dataset.ready = '1';
   });
 </script>
