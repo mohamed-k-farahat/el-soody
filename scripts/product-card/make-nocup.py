@@ -1,66 +1,78 @@
 """
 base-nocup.jpg: the base poster without the white cup, for products that bring their own
-prop in its place (the dallah for Arabic coffee).
+cup or pot in its place (Arabic coffee's dallah, the espresso cup).
 
   python scripts/product-card/make-nocup.py
 
-The cup is replaced in two layers, so there is no seam:
-  tone    a smooth fill from what surrounds the cup: across each row above the saucer (keeps the
-          table edge straight), then top to bottom at saucer height, where only bag and saucer
-          are beside it
-  detail  the fine marble grain of the table, taken from the clean rows below the hashtag line
+1. rembg finds the cup, saucer and handle; the mask is grown over their soft edges and shadow.
+2. In a working copy the bag and the hashtag text are hidden behind plain table, so only wall
+   and table feed the fill (otherwise their black and white smear in).
+3. Each row of the hole is filled from its own left and right neighbours (keeps the table edge
+   straight), then the real marble grain from the clean table is laid back on top, and the
+   result is feathered into the photo.
+4. Where the saucer covered the bag's bottom corner, the corner is rebuilt from the bag.
 """
 from pathlib import Path
 
+import cv2
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
+from rembg import new_session, remove
 
 here = Path(__file__).parent
-src_img = Image.open(here / "base.jpg").convert("RGB")
-orig = np.asarray(src_img).astype(np.float32)
-img = orig.copy()
+base = Image.open(here / "base.jpg").convert("RGB")
+img = np.asarray(base).astype(np.float32)
+H, W = img.shape[:2]
 
-x_left, x_right = 829, 1378         # clean background just right of the bag / just past the cup
-bag_edge, bag_bottom = 815, 1271    # the bag's right edge and the line where it meets the table
-top_y, table_edge = 960, 1035       # top of the cup area, and where the wall meets the table
-saucer_top, table_y = 1172, 1352    # just above the saucer rim, and the first table row under its shadow
-clean_y = 1394                      # table rows below the hashtag text: the grain source
+BAG_EDGE, BAG_BOTTOM = 816, 1271     # the bag's right edge and where it meets the table
+TEXT = (980, 1350, 1385, 1393)       # the hashtag line under the cup (x0, y0, x1, y1)
+CLEAN_Y = 1394                       # clean table rows below the text
 
-# tone, part 1: above the saucer, blend each row between the two sides
-for y in range(top_y, saucer_top):
-    t = np.linspace(0, 1, x_right - x_left)[:, None]
-    img[y, x_left:x_right] = orig[y, x_left - 6:x_left].mean(axis=0) * (1 - t) + orig[y, x_right:x_right + 6].mean(axis=0) * t
-img[top_y:saucer_top, bag_edge:x_left] = img[top_y:saucer_top, x_left:x_left + 1]
+# 1. the cup's mask
+x0, y0, x1, y1 = 760, 940, 1400, 1350
+cut = remove(base.crop((x0, y0, x1, y1)), session=new_session("isnet-general-use"), post_process_mask=True)
+mask = np.zeros((H, W), np.uint8)
+mask[y0:y1, x0:x1] = (np.asarray(cut)[..., 3] > 8) * 255
+mask[1025:1215, 1240:1372] = 255                              # the handle's outer curve, which rembg misses
+mask = cv2.dilate(mask, np.ones((25, 25), np.uint8))
+mask[TEXT[1]:, :] = 0                                        # never paint over the text
+ys, xs = np.nonzero(mask)
+mask[ys.max() - 6:TEXT[1] - 2, xs.min() + 30:xs.max() - 30] = 255   # the saucer's shadow, down to the text
+is_bag_corner = np.zeros_like(mask, bool)
+is_bag_corner[:BAG_BOTTOM, :BAG_EDGE] = True
 
-# tone, part 2: at saucer height, blend each column between the row above and the table below
-# (the table row underneath still has the cup's shadow in it, so only its broad tone is used)
-bottom = np.asarray(Image.fromarray(orig[table_y - 2:table_y + 3, 700:1440].astype(np.uint8)).filter(ImageFilter.BoxBlur(60))).astype(np.float32)[2, 76:x_right - 700]
-t = np.linspace(0, 1, table_y - saucer_top)[:, None, None]
-img[saucer_top:table_y, 776:x_right] = img[saucer_top - 1, 776:x_right][None] * (1 - t) + bottom[None] * t
+# 2. working copy: bag and text replaced by plain table / background
+work = img.copy()
+for y in range(880, BAG_BOTTOM):
+    work[y, 600:BAG_EDGE + 4] = img[y, BAG_EDGE + 14:BAG_EDGE + 20].mean(axis=0)
+tx0, ty0, tx1, ty1 = TEXT
+work[ty0:ty1, tx0 - 20:tx1] = img[CLEAN_Y:CLEAN_Y + (ty1 - ty0), tx0 - 20:tx1]
 
-# the saucer hid the bag's bottom corner: rebuild it from the bag just left of it
-for y in range(saucer_top, bag_bottom):
-    img[y, 776:bag_edge] = orig[y, 768:774].mean(axis=0)
+# 3. fill each row of the hole from its own left and right neighbours (keeps the table edge and
+#    the wall/table tones straight, which this scene is made of), soften it a touch,
+#    then add the table's grain back
+tone = work.copy()
+for y in np.unique(np.nonzero(mask)[0]):
+    xs_row = np.nonzero(mask[y])[0]
+    xl, xr = xs_row.min(), xs_row.max() + 1
+    left, right = work[y, xl - 4:xl].mean(axis=0), work[y, xr:xr + 4].mean(axis=0)
+    t = np.linspace(0, 1, xr - xl)[:, None]
+    tone[y, xl:xr] = left * (1 - t) + right * t
+tone = cv2.GaussianBlur(tone, (0, 0), 3)
 
-# detail: marble grain only (texture minus its blur), laid over the table part of the fill
-h = table_y - table_edge
-reach = 1440 - clean_y
-rows = [clean_y + (k if k < reach else 2 * reach - 1 - k) for k in (np.arange(h) % (2 * reach))]
-tex = orig[rows, 776:x_right]
-blur = np.asarray(Image.fromarray(tex.astype(np.uint8)).filter(ImageFilter.GaussianBlur(5))).astype(np.float32)
-grain = tex - blur
-for i, y in enumerate(range(table_edge, table_y)):
-    x0 = bag_edge if y < bag_bottom else 776
-    img[y, x0:x_right] += grain[i, x0 - 776:] * 0.35
+table = img[CLEAN_Y:H, :].copy()
+grain_src = table - cv2.GaussianBlur(table, (0, 0), 4)
+reps = int(np.ceil(H / grain_src.shape[0])) + 1
+grain = np.concatenate([grain_src if i % 2 == 0 else grain_src[::-1] for i in range(reps)])[:H]
+table_part = np.zeros((H, W, 1), np.float32)
+table_part[1035:] = 1.0                                       # grain on the table only, not the wall
+fill = tone + grain * 0.4 * table_part
 
-# feather the outer edges into the untouched picture
-for i in range(16):
-    a = i / 16
-    img[top_y:table_y, x_right - 16 + i] = img[top_y:table_y, x_right - 16 + i] * (1 - a) + orig[top_y:table_y, x_right - 16 + i] * a
-    img[bag_bottom:table_y, 776 + i] = orig[bag_bottom:table_y, 776 + i] * (1 - a) + img[bag_bottom:table_y, 776 + i] * a
-for i in range(16):
-    a = i / 16
-    img[table_y - 16 + i, 776:x_right] = img[table_y - 16 + i, 776:x_right] * (1 - a) + orig[table_y - 16 + i, 776:x_right] * a
+# 4. the bag's hidden corner comes back from the bag beside it
+for y in range(1150, BAG_BOTTOM):
+    fill[y, 760:BAG_EDGE] = img[y, 752:758].mean(axis=0)
 
-Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).save(here / "base-nocup.jpg", quality=95)
+soft = cv2.GaussianBlur(mask.astype(np.float32) / 255, (0, 0), 5)[..., None]
+out = img * (1 - soft) + fill * soft
+Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(here / "base-nocup.jpg", quality=95)
 print("saved base-nocup.jpg")

@@ -43,8 +43,9 @@
   .prop { position: absolute; transform: translate(-50%, -100%); }
   .prop img { display: block; width: 100%; height: auto; filter: drop-shadow(-10px 6px 10px rgba(40, 22, 10, .45)); }
   /* soft contact shadow on the table under each prop */
-  .prop::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -10px; height: 26px; z-index: -1;
-    background: radial-gradient(ellipse at center, rgba(30,16,6,.55), rgba(30,16,6,0) 70%); }
+  .prop::after { content: ""; position: absolute; left: 50%; width: var(--sh-w, 84%); transform: translateX(-50%);
+    bottom: -14px; height: 34px; z-index: -1; opacity: var(--sh-o, .55);
+    background: radial-gradient(ellipse at center, rgba(30,16,6,1), rgba(30,16,6,.45) 45%, rgba(30,16,6,0) 72%); }
   .prop--flat::after { display: none; }
   /* the bean drawings: a touch softer and warmer so they sit in the photo */
   .prop--flat img { filter: blur(.5px) saturate(.88) brightness(.9) contrast(1.05) drop-shadow(-5px 4px 3px rgba(35, 18, 6, .55)); }
@@ -61,12 +62,13 @@
   }
   .stamp__top { font-size: 22px; font-weight: 700; opacity: .8; }
   .stamp__main { font-size: 40px; font-weight: 800; line-height: 1.1; color: #F1DFB4; padding: 0 18px; white-space: nowrap; }
-  .stamp__flag { display: flex; width: 86px; height: 14px; border-radius: 3px; overflow: hidden; margin-top: 4px; box-shadow: 0 0 0 1.5px rgba(214, 186, 128, .7); }
-  .stamp__flag i { flex: 1; }
-  .stamp__flag--v { flex-direction: column; height: 30px; width: 58px; }
+  .stamp__flag { display: block; width: 60px; height: 40px; border-radius: 4px; overflow: hidden; margin-top: 4px;
+    box-shadow: 0 0 0 2px rgba(214, 186, 128, .85), 0 3px 8px rgba(0,0,0,.35); }
+  .stamp__flag svg { display: block; width: 100%; height: 100%; }
 </style>
 </head>
 <body>
+<script src="flags.js"></script>
 <div class="poster" id="poster">
   <div class="strip" id="strip"></div>
   <div class="bag" id="bag"></div>
@@ -85,6 +87,7 @@
     const box = document.createElement('div');
     box.className = 'prop' + (p.flat ? ' prop--flat' : '') + (p.warm ? ' warm' : '');
     box.style.cssText = `left:${p.x}px; top:${p.y}px; width:${p.w}px;`;
+    if (p.shadow) { box.style.setProperty('--sh-w', p.shadow.w + '%'); box.style.setProperty('--sh-o', p.shadow.o); }
     const img = document.createElement('img');
     img.src = p.src;
     if (p.flip) img.style.transform = 'scaleX(-1)';
@@ -92,16 +95,16 @@
     poster.appendChild(box);
   });
 
-  // stamp: { top, main, flag: [colours], vertical: stripes stacked top to bottom }
+  // stamp: { top, main, flag: name in flags.js }
   if (d.stamp) {
     const st = document.createElement('div');
     st.className = 'stamp';
     if (d.stamp.top) { const t = document.createElement('span'); t.className = 'stamp__top'; t.textContent = d.stamp.top; st.appendChild(t); }
     const m = document.createElement('span'); m.className = 'stamp__main'; m.id = 'stampMain'; m.textContent = d.stamp.main; st.appendChild(m);
-    if (d.stamp.flag) {
+    if (d.stamp.flag && window.FLAGS[d.stamp.flag]) {
       const f = document.createElement('span');
-      f.className = 'stamp__flag' + (d.stamp.vertical ? ' stamp__flag--v' : '');
-      d.stamp.flag.forEach((c) => { const i = document.createElement('i'); i.style.background = c; f.appendChild(i); });
+      f.className = 'stamp__flag';
+      f.innerHTML = window.FLAGS[d.stamp.flag];
       st.appendChild(f);
     }
     poster.appendChild(st);

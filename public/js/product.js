@@ -80,16 +80,13 @@
     return Math.min(50, Math.max(1, Number.isFinite(q) ? q : 1));
   }
 
-  // the spice blend costs more for bigger bags (set per size in admin)
-  const withSpice = () => section() === 'plain' && value('spice') === '1';
-  const spicePrice = () => (withSpice() && data.spiceBySize ? data.spiceBySize[value('size')] || 0 : 0);
+  // the spice blend add-on: plain coffee only, the amount the customer picked
+  const spice = () => (section() === 'plain' ? Number(value('spice') || 0) : 0);
 
   function paintPrice() {
     const item = currentItem();
     const unit = item.prices[value('size')];
-    const add = document.getElementById('spiceAdd');
-    if (add && data.spiceText) add.textContent = '+ ' + (data.spiceText[value('size')] || '');
-    document.getElementById('buyPrice').textContent = unit == null ? '' : money((unit + spicePrice()) * qty());
+    document.getElementById('buyPrice').textContent = unit == null ? '' : money((unit + spice()) * qty());
   }
 
   form.addEventListener('change', (e) => {
@@ -114,7 +111,7 @@
       size,
       roast: item.roasts.length ? value('roast') : '',
       grind: Number($('#grind')?.value || 0),
-      spice: withSpice() ? 1 : 0,
+      spice: spice(),
       qty: qty(),
     });
     const msg = document.getElementById('buyMsg');

@@ -29,8 +29,14 @@
   // flat page order: cover, intro, contents, then plate + story for every bean, then the end
   const plateIndex = (i) => 3 + i * 2;
 
-  // bean pictures are pre-rendered images (media/beans) or photos uploaded in admin, much lighter for phones than live SVG
-  const beanImg = (b) => `<img class="beans-img" src="${b.image || `/media/beans/${b.id}.webp`}" alt="" decoding="async" draggable="false">`;
+  // each coffee's picture: a branded photo (media/book, or one uploaded in admin) shown like a print
+  // pasted on the page, or a bean drawing (media/beans) drawn straight on the paper
+  const drawing = (b) => `/media/beans/${b.id}.webp`;
+  const beanImg = (b, tilt = 0) => {
+    const src = b.image || drawing(b);
+    if (src.startsWith('/media/beans/')) return `<img class="beans-img" src="${src}" alt="" decoding="async" draggable="false">`;
+    return `<figure class="plate-photo" style="--tilt:${tilt}deg"><img src="${src}" alt="" decoding="async" draggable="false"></figure>`;
+  };
   const introBean = BEANS.find((b) => b.id === 'malaki') || BEANS[0];
 
   function roastLine(b) {
@@ -60,7 +66,7 @@
           <h3 class="pg__h">${t('book.introTitle')}</h3>
           <p>${t('book.intro1')}</p>
           <p>${t('book.intro2')}</p>
-          <div class="intro__art">${beanImg(introBean)}</div>
+          <div class="intro__art"><img class="beans-img" src="${drawing(introBean)}" alt="" decoding="async" draggable="false"></div>
           <p class="pg__sign">${t('book.intro3')}</p>
         </div>
         <span class="pg__num">${num(1)}</span>
@@ -91,7 +97,7 @@
             <p class="pg__eyebrow">${c.origin}</p>
             <h3 class="plate__name">${c.name}</h3>
             ${c.tag ? `<span class="plate__tag">${c.tag}</span>` : ''}
-            <div class="plate__art">${beanImg(b)}</div>
+            <div class="plate__art">${beanImg(b, i % 2 ? 1.2 : -1.2)}</div>
             <dl class="plate__facts">
               <div><dt>${t('book.notes')}</dt><dd>${c.notes}</dd></div>
               <div><dt>${t('book.roast')}</dt><dd class="chips">${roastLine(b)}</dd></div>

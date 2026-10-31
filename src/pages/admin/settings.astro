@@ -44,9 +44,9 @@ if (form && form.get('action') === 'password') {
     instagram: str(form, 'instagram', 300), facebook: str(form, 'facebook', 300), tiktok: str(form, 'tiktok', 300),
     order_email: str(form, 'order_email', 120),
     spice_addon_enabled: flag(form, 'spice_addon_enabled'),
-    spice_addon_prices: ['125', '250', '1000'].map((s) => toPiasters(form.get(`spice_${s}`))).join(','),
+    spice_addon_prices: [1, 2, 3].map((n) => toPiasters(form.get(`spice_${n}`))).filter((n) => Number.isInteger(n) && n > 0).join(','),
   };
-  if (values.spice_addon_enabled && !values.spice_addon_prices.split(',').every((n) => Number(n) > 0)) errors.push('اكتب سعر التحويجة لكل وزن: التُمن والربع والكيلو.');
+  if (values.spice_addon_enabled && !values.spice_addon_prices) errors.push('اكتب مبلغ واحد على الأقل للتحويجة، مثلا ١٠ و٢٠ و٣٠.');
   if (!values.pickup_enabled && !values.delivery_enabled) errors.push('لازم طريقة استلام واحدة على الأقل.');
   if (!values.cod_enabled && !values.online_enabled) errors.push('لازم طريقة دفع واحدة على الأقل.');
   for (const k of ['instagram', 'facebook', 'tiktok']) if (values[k] && !/^https:\/\//.test(values[k])) errors.push(`الرابط لازم يبدأ بـ https://`);
@@ -119,13 +119,13 @@ const ready = paymobReady();
 
     <section class="card">
       <h2>إضافة تحويجة للبن السادة</h2>
-      <p class="hint">زي المنيو المطبوع «إضافة تحويجة (10-20-30)». العميل بيختار «بالتحويجة» وهو بيطلب بن سادة، والسعر بيتحسب على حسب الوزن.</p>
+      <p class="hint">زي المنيو المطبوع «إضافة تحويجة (10-20-30)». في البن السادة بس، العميل بيختار قد إيه تحويجة (١٠ أو ٢٠ أو ٣٠) على أي وزن. البن المحوّج مالوش الإضافة دي.</p>
       <div class="row" style="margin-bottom:.8rem">
         <label class="check"><input type="checkbox" name="spice_addon_enabled" checked={s.spice_addon_enabled === '1'}> شغالة</label>
       </div>
       <div class="grid3">
-        {[['125', 'التُمن'], ['250', 'الربع'], ['1000', 'الكيلو']].map(([size, label], i) => (
-          <label class="f">{label} (جنيه)<input type="number" name={`spice_${size}`} min="0" step="0.5" value={(Number(String(s.spice_addon_prices || '').split(',')[i]) || 0) / 100 || ''}></label>
+        {[1, 2, 3].map((n, i) => (
+          <label class="f">الاختيار {['الأول', 'التاني', 'التالت'][i]} (جنيه)<input type="number" name={`spice_${n}`} min="0" step="0.5" value={(Number(String(s.spice_addon_prices || '').split(',')[i]) || 0) / 100 || ''}></label>
         ))}
       </div>
     </section>

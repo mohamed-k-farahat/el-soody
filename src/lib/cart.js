@@ -32,8 +32,8 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
     const qty = Math.floor(Number(raw?.qty));
     const roast = String(raw?.roast || '');
     const grindId = Number(raw?.grind || 0);
-    const withSpice = Boolean(Number(raw?.spice || 0));
-    const key = `${raw?.item}|${size}|${roast}|${grindId}|${withSpice ? 1 : 0}`;
+    const spice = Number(raw?.spice || 0);
+    const key = `${raw?.item}|${size}|${roast}|${grindId}|${spice}`;
 
     if (!it || !it.available || !it.product_active) { problems.push({ key, reason: 'unavailable' }); continue; }
     const unit = it.prices[size];
@@ -41,9 +41,8 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
     if (it.roasts.length ? !it.roasts.includes(roast) : roast !== '') { problems.push({ key, reason: 'roast' }); continue; }
     if (grindId && !grinds[grindId]) { problems.push({ key, reason: 'grind' }); continue; }
     if (!(qty >= 1 && qty <= MAX_QTY)) { problems.push({ key, reason: 'qty' }); continue; }
-    // the spice blend add-on: plain coffee only, priced by size from admin settings
-    const spice = withSpice ? settings.spiceBySize?.[size] ?? 0 : 0;
-    if (withSpice && !(spice && it.section === 'plain' && it.product_kind === 'coffee')) { problems.push({ key, reason: 'spice' }); continue; }
+    // the spice blend add-on: plain coffee only, one of the amounts set in admin, any weight
+    if (spice && !(it.section === 'plain' && it.product_kind === 'coffee' && settings.spiceOptions.includes(spice))) { problems.push({ key, reason: 'spice' }); continue; }
 
     const details = [
       t(lang, `section.${it.section}`),
@@ -55,7 +54,7 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
 
     lines.push({
       key, item: it.id, productId: it.pid, slug: it.slug, image: it.image,
-      name: loc(it, 'name', lang), details, size, roast, grind: grindId, spice: withSpice ? 1 : 0,
+      name: loc(it, 'name', lang), details, size, roast, grind: grindId, spice,
       qty, unit: unit + spice, total: (unit + spice) * qty,
     });
   }
