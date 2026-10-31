@@ -1,0 +1,53 @@
+---
+// Owner login for the admin panel
+import { storedHash, verifyPassword, makeSessionCookie, lockedOut, recordFailure, clearFailures } from '../../lib/auth.js';
+
+const next = (() => {
+  const n = Astro.url.searchParams.get('next') || '/admin';
+  return n.startsWith('/admin') && !n.startsWith('//') ? n : '/admin';
+})();
+const secure = Astro.url.protocol === 'https:';
+const hash = await storedHash();
+let message = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  if (!hash) {
+    message = 'لسه مفيش كلمة سر متحطة للوحة التحكم.';
+  } else if (await lockedOut(Astro.request)) {
+    message = 'محاولات غلط كتير. استنى ربع ساعة وجرّب تاني.';
+  } else if (await verifyPassword(String(form.get('password') || ''), hash)) {
+    await clearFailures(Astro.request);
+    return new Response(null, { status: 303, headers: { location: next, 'set-cookie': await makeSessionCookie(hash, secure) } });
+  } else {
+    await recordFailure(Astro.request);
+    message = 'كلمة السر غلط.';
+  }
+}
+---
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>دخول | إدارة بن السعودي</title>
+  <link rel="icon" type="image/png" href="/media/logo-sm.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="login-page">
+  <form class="card login" method="post">
+    <span class="logo-mark login__logo" aria-hidden="true"></span>
+    <h1>إدارة بن السعودي</h1>
+    {!hash && <p class="errors">لسه مفيش كلمة سر متحطة للوحة التحكم.</p>}
+    {message && hash && <p class="errors" role="alert">{message}</p>}
+    <label class="f">كلمة السر
+      <input type="password" name="password" autocomplete="current-password" required autofocus dir="ltr">
+    </label>
+    <button class="btn btn--primary" style="width:100%">دخول</button>
+  </form>
+</body>
+</html>

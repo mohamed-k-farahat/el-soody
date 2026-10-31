@@ -23,6 +23,12 @@ h2 { font-size: 1.15rem; margin: 0 0 .8rem; }
 .abar__nav a:hover { color: #fff; }
 .abar__nav a[aria-current="page"] { background: #FD9A19; color: #1B120C; }
 .abar__site { color: #CDBBA4; font-size: .9rem; text-decoration: none; white-space: nowrap; }
+.abar__out { background: none; border: 1px solid #5a4636; color: #CDBBA4; border-radius: 999px; padding: .3rem .8rem; font: inherit; font-size: .85rem; cursor: pointer; }
+.abar__out:hover { border-color: #FD9A19; color: #FD9A19; }
+.login-page { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
+.login { width: min(380px, 100%); text-align: center; padding: 2rem 1.6rem; }
+.login .f { text-align: start; }
+.login__logo { width: 54px; margin-bottom: .6rem; }
 .amain { max-width: 1150px; margin: 0 auto; padding: 1.2rem 1rem 4rem; }
 
 .flash { background: #E3F4EA; color: var(--green); border: 1px solid #BFE3CC; padding: .6rem 1rem; border-radius: 10px; font-weight: 700; }

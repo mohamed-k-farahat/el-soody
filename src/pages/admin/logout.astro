@@ -1,0 +1,10 @@
+---
+// POST /admin/logout: end this device's admin session
+import { clearSessionCookie } from '../../lib/auth.js';
+
+if (Astro.request.method !== 'POST') return Astro.redirect('/admin', 303);
+return new Response(null, {
+  status: 303,
+  headers: { location: '/admin/login', 'set-cookie': clearSessionCookie(Astro.url.protocol === 'https:') },
+});
+---

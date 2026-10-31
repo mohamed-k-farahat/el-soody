@@ -5,10 +5,26 @@ import { DB, getSettings, setSettings, getGrinds } from '../../lib/db.js';
 import { toPiasters } from '../../lib/money.js';
 import { paymobReady, paymobMode } from '../../lib/paymob.js';
 import { str, flag } from '../../lib/admin.js';
+import { storedHash, verifyPassword, hashPassword, setPasswordHash, makeSessionCookie } from '../../lib/auth.js';
 
 const errors = [];
-if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
+let pwMessage = '';
+const form = Astro.request.method === 'POST' ? await Astro.request.formData() : null;
+
+if (form && form.get('action') === 'password') {
+  const current = String(form.get('current') || '');
+  const fresh = String(form.get('fresh') || '');
+  const hash = await storedHash();
+  if (hash && !(await verifyPassword(current, hash))) pwMessage = 'كلمة السر الحالية غلط.';
+  else if (fresh.length < 10) pwMessage = 'كلمة السر الجديدة لازم تكون ١٠ حروف على الأقل.';
+  else if (fresh !== String(form.get('confirm') || '')) pwMessage = 'كلمتين السر الجداد مش زي بعض.';
+  else {
+    const newHash = await hashPassword(fresh);
+    await setPasswordHash(newHash);
+    // stay logged in on this device; every other device has to log in again
+    return new Response(null, { status: 303, headers: { location: '/admin/settings?saved=1', 'set-cookie': await makeSessionCookie(newHash, Astro.url.protocol === 'https:') } });
+  }
+} else if (form) {
   const fee = toPiasters(form.get('delivery_fee'));
   const free = toPiasters(form.get('free_delivery_over'));
   if (Number.isNaN(fee) || Number.isNaN(free)) errors.push('مصاريف التوصيل لازم تكون رقم.');
@@ -124,5 +140,19 @@ const ready = paymobReady();
     </section>
 
     <div class="savebar"><button class="btn btn--primary">احفظ الإعدادات</button></div>
+  </form>
+
+  <form method="post" class="card">
+    <h2>كلمة سر لوحة التحكم</h2>
+    {pwMessage && <p class="errors" role="alert">{pwMessage}</p>}
+    <input type="hidden" name="action" value="password">
+    <div class="grid2">
+      <label class="f">كلمة السر الحالية<input type="password" name="current" autocomplete="current-password" dir="ltr"></label>
+      <span></span>
+      <label class="f">كلمة السر الجديدة (١٠ حروف على الأقل)<input type="password" name="fresh" autocomplete="new-password" minlength="10" dir="ltr"></label>
+      <label class="f">اكتبها تاني<input type="password" name="confirm" autocomplete="new-password" minlength="10" dir="ltr"></label>
+    </div>
+    <p class="hint">بعد التغيير، أي جهاز تاني كان داخل هيطلب كلمة السر الجديدة.</p>
+    <button class="btn">غيّر كلمة السر</button>
   </form>
 </Admin>
