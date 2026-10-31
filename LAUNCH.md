@@ -18,7 +18,7 @@ be online with the policies page (step 4 below gets it online with cash on deliv
 | 2 | You | ✅ Approve the Cloudflare sign in when I run `npx wrangler login` (opens your browser, like the GitHub sign in) |
 | 3 | Me | ✅ Create the production database and photo storage, apply the schema and load the seed data (all products, stories, prices) |
 | 4 | Me | ✅ Deploy the site. It gets an address like `el-soody.<your-name>.workers.dev`. Cash on delivery works from here |
-| 5 | You | In Cloudflare, Zero Trust: create the admin login (Access application for `/admin`) with the owner's email. I'll guide you click by click, then put the two values it gives into the config |
+| 5 | You | ✅ Admin password set (`node scripts/set-admin-password.mjs`, then apply the hash file with wrangler). The owner can change it in admin Settings |
 | 6 | Owner | Open `/admin`, fill in Settings: delivery fee, areas, shop phone, WhatsApp, address, hours. Check every price |
 | 7 | Owner | Read and adjust the Policies page wording (it is a starting draft, not legal advice) |
 | 8 | You | Optional but recommended: buy a domain (about $10 a year, e.g. elsoody.com) in Cloudflare, then I connect it |
