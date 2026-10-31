@@ -17,6 +17,7 @@ export function mapProduct(r) {
     roasts: split(r.roasts),
     story_ar: parseList(r.story_ar),
     story_en: parseList(r.story_en),
+    photos: parseList(r.photos),
     in_book: !!r.in_book,
     active: !!r.active,
   };

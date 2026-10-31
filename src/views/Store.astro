@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { t, href } from '../lib/i18n.js';
 import { getProducts, getItems, lowestPrice, loc } from '../lib/db.js';
 import { egp } from '../lib/money.js';
-import { imageUrl } from '../lib/images.js';
+import { imageUrl, storePhotos, isPhoto } from '../lib/images.js';
 
 const { lang } = Astro.props;
 const tr = (k) => t(lang, k);
@@ -28,8 +28,8 @@ const cards = products
     origin: loc(p, 'origin', lang),
     notes: loc(p, 'notes', lang),
     tag: loc(p, 'tag', lang),
-    image: imageUrl(p.image),
-    photo: !p.image.startsWith('/media/beans/'),
+    image: imageUrl(storePhotos(p)[0]),
+    photo: isPhoto(storePhotos(p)[0]),
     from: egp(lowestPrice(items), lang),
   }));
 

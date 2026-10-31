@@ -109,6 +109,11 @@ table.t { width: 100%; border-collapse: collapse; }
 .steps { display: flex; gap: .4rem; flex-wrap: wrap; }
 .steps button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
 
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .8rem; }
+.photo-tile { margin: 0; display: grid; gap: .3rem; padding: .5rem; border: 1px solid var(--line); border-radius: 12px; background: #FBF7F1; }
+.photo-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.photo-tile .check { font-size: .85rem; }
+.photo-tile__remove { color: var(--red); }
 .pimg { width: 150px; height: 130px; object-fit: contain; border-radius: 12px; background: #F6EBD6; border: 1px solid var(--line); }
 details.box { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: .8rem 1.1rem; margin-bottom: 1rem; }
 details.box summary { cursor: pointer; font-weight: 700; }

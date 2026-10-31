@@ -55,6 +55,19 @@ if (Astro.request.method === 'POST') {
   if (upload.error) errors.push(upload.error);
   const image = upload.value || (form.get('image_reset') ? '' : (product?.image || ''));
 
+  // store photos: keep the ones not removed, put the chosen main one first, add new uploads at the end
+  const current = product?.photos || [];
+  const mainIndex = Number(form.get('photo_main'));
+  let photos = current.filter((_, i) => !form.get(`photo_remove_${i}`));
+  const main = current[mainIndex];
+  if (main && photos.includes(main)) photos = [main, ...photos.filter((x) => x !== main)];
+  for (const file of form.getAll('photo_files').slice(0, 8)) {
+    const up = await saveUpload(file, 'products');
+    if (up.error) errors.push(up.error);
+    else if (up.value) photos.push(up.value);
+  }
+  photos = photos.slice(0, 10);
+
   // menu rows
   const rowOps = [];
   const readRow = (prefix) => {
@@ -84,12 +97,12 @@ if (Astro.request.method === 'POST') {
     const cols = Object.keys(v);
     let productId = id;
     if (isNew) {
-      const res = await DB().prepare(`INSERT INTO products (${cols.join(', ')}, image) VALUES (${cols.map(() => '?').join(', ')}, ?) RETURNING id`)
-        .bind(...Object.values(v), image).first();
+      const res = await DB().prepare(`INSERT INTO products (${cols.join(', ')}, image, photos) VALUES (${cols.map(() => '?').join(', ')}, ?, ?) RETURNING id`)
+        .bind(...Object.values(v), image, JSON.stringify(photos)).first();
       productId = res.id;
     } else {
-      await DB().prepare(`UPDATE products SET ${cols.map((c) => `${c} = ?`).join(', ')}, image = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(...Object.values(v), image, id).run();
+      await DB().prepare(`UPDATE products SET ${cols.map((c) => `${c} = ?`).join(', ')}, image = ?, photos = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(...Object.values(v), image, JSON.stringify(photos), id).run();
     }
     const ops = rowOps.map(([kind, rowId, row]) => {
       if (kind === 'delete') return DB().prepare('DELETE FROM items WHERE id = ? AND product_id = ?').bind(rowId, productId);
@@ -102,10 +115,10 @@ if (Astro.request.method === 'POST') {
   }
 
   // show the form again with what was typed
-  product = { ...(product || {}), ...v, roasts: v.roasts.split(',').filter(Boolean), story_ar: JSON.parse(v.story_ar), story_en: JSON.parse(v.story_en), image: product?.image || '' };
+  product = { ...(product || {}), ...v, roasts: v.roasts.split(',').filter(Boolean), story_ar: JSON.parse(v.story_ar), story_en: JSON.parse(v.story_en), image: product?.image || '', photos: product?.photos || [] };
 }
 
-const p = product || { kind: 'coffee', color: '#6E4022', active: true, in_book: false, roasts: [], story_ar: [], story_en: [], sort: 50, image: '' };
+const p = product || { kind: 'coffee', color: '#6E4022', active: true, in_book: false, roasts: [], story_ar: [], story_en: [], sort: 50, image: '', photos: [] };
 const val = (k) => p[k] ?? '';
 ---
 <Admin title={isNew ? 'منتج جديد' : `تعديل ${p.name_ar}`} active="products">
@@ -146,7 +159,24 @@ const val = (k) => p[k] ?? '';
     </section>
 
     <section class="card">
-      <h2>الصورة</h2>
+      <h2>صور المتجر</h2>
+      <p class="hint">بتظهر في المتجر وصفحة المنتج ولما حد يشارك الرابط. الصورة الرئيسية هي اللي بتظهر في كارت المنتج. لو مفيش صور، بتظهر رسمة الحبوب.</p>
+      {p.photos.length > 0 && (
+        <div class="photo-grid">
+          {p.photos.map((ph, i) => (
+            <figure class="photo-tile">
+              <img src={imageUrl(ph)} alt="" loading="lazy">
+              <label class="check"><input type="radio" name="photo_main" value={i} checked={i === 0}> الرئيسية</label>
+              <label class="check photo-tile__remove"><input type="checkbox" name={`photo_remove_${i}`}> شيلها</label>
+            </figure>
+          ))}
+        </div>
+      )}
+      <label class="f" style="margin-top:.8rem">أضف صور (تقدر تختار كذا صورة مرة واحدة، JPG أو PNG أو WebP، لحد ٤ ميجا للصورة)<input type="file" name="photo_files" accept="image/jpeg,image/png,image/webp" multiple></label>
+    </section>
+
+    <section class="card">
+      <h2>رسمة الحبوب (كتاب الحكايات)</h2>
       <div class="row">
         <img class="pimg" src={imageUrl(p.image)} alt="">
         <div>

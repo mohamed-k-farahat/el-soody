@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { t, href } from '../lib/i18n.js';
 import { getProduct, getItems, getGrinds, loc, SIZES, ROAST_ORDER } from '../lib/db.js';
 import { egp } from '../lib/money.js';
-import { imageUrl } from '../lib/images.js';
+import { imageUrl, storePhotos, isPhoto } from '../lib/images.js';
 
 const { lang, slug } = Astro.props;
 const tr = (k) => t(lang, k);
@@ -14,7 +14,8 @@ const items = await getItems({ productId: product.id });
 
 const grinds = product.kind === 'coffee' ? await getGrinds() : [];
 const name = loc(product, 'name', lang);
-const image = imageUrl(product.image);
+const photos = storePhotos(product);
+const image = imageUrl(photos[0]);
 const site = Astro.url.origin;
 
 // everything the picker needs, small and price-only (the server re-checks on order)
@@ -59,8 +60,19 @@ const roastLabel = (r) => tr(`roast.${r}`);
 >
   <section class="product">
     <div class="container product__grid">
-      <div class="product__media reveal">
-        <img class={product.image.startsWith('/media/beans/') ? '' : 'is-photo'} src={image} alt={name}>
+      <div class="product__gallery reveal">
+        <div class="product__media">
+          <img id="productPhoto" class={isPhoto(photos[0]) ? 'is-photo' : ''} src={image} alt={name}>
+        </div>
+        {photos.length > 1 && (
+          <div class="product__thumbs" role="group" aria-label={name}>
+            {photos.map((ph, i) => (
+              <button type="button" class="product__thumb" data-src={imageUrl(ph)} aria-pressed={i === 0 ? 'true' : 'false'} aria-label={`${name} ${i + 1}`}>
+                <img src={imageUrl(ph)} alt="" decoding="async">
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div class="reveal">
@@ -129,5 +141,12 @@ const roastLabel = (r) => tr(`roast.${r}`);
     </div>
   </section>
 
+  <script slot="scripts" is:inline>
+    // switch the big photo when a thumbnail is chosen
+    document.querySelectorAll('.product__thumb').forEach((btn) => btn.addEventListener('click', () => {
+      document.getElementById('productPhoto').src = btn.dataset.src;
+      document.querySelectorAll('.product__thumb').forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    }));
+  </script>
   <script slot="scripts" is:inline src="/js/product.js"></script>
 </Base>

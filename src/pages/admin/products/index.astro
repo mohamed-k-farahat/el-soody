@@ -1,11 +1,11 @@
 ---
 // All products, including hidden ones
 import Admin from '../../../layouts/Admin.astro';
-import { DB } from '../../../lib/db.js';
+import { DB, mapProduct } from '../../../lib/db.js';
 import { imageUrl } from '../../../lib/images.js';
 
 const { results: products } = await DB().prepare(`
-  SELECT p.id, p.slug, p.name_ar, p.name_en, p.kind, p.image, p.active, p.in_book, p.sort,
+  SELECT p.id, p.slug, p.name_ar, p.name_en, p.kind, p.image, p.photos, p.active, p.in_book, p.sort,
          (SELECT count(*) FROM items i WHERE i.product_id = p.id) AS rows
   FROM products p ORDER BY p.sort, p.id`).all();
 ---
@@ -20,7 +20,7 @@ const { results: products } = await DB().prepare(`
       <tbody>
         {products.map((p) => (
           <tr>
-            <td><img class="thumb" src={imageUrl(p.image)} alt="" loading="lazy"></td>
+            <td><img class="thumb" src={imageUrl(mapProduct(p).photos[0] || p.image)} alt="" loading="lazy"></td>
             <td><a class="rowlink" href={`/admin/products/${p.id}`}>{p.name_ar}</a><br><span class="hint">{p.name_en}</span></td>
             <td class="hide-sm">{p.in_book ? 'أيوه' : 'لأ'}</td>
             <td class="hide-sm">{p.rows}</td>
