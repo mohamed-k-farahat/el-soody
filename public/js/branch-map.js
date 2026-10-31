@@ -10,11 +10,11 @@
 
   const pins = JSON.parse(data.textContent);
   const t = (k) => window.SOODY.t(k);
-  const rtl = document.documentElement.dir === 'rtl';
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const map = L.map(el, { scrollWheelZoom: false, zoomControl: false, attributionControl: true });
-  L.control.zoom({ position: rtl ? 'topleft' : 'topright' }).addTo(map);
+  // zoom buttons at the bottom, out of the way of the pop up cards that open above the pins
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
   map.attributionControl.setPrefix(false);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -30,8 +30,18 @@
     Object.entries(markers).forEach(([k, m]) => m.getElement()?.classList.toggle('is-active', k === String(id)));
     const m = markers[id];
     if (!m) return;
-    if (fly) map.flyTo(m.getLatLng(), 16, { duration: 0.6 });
-    if (open) m.openPopup();
+    // put the pin below the middle so its card (which opens above it) fits inside the map
+    if (fly) {
+      const zoom = 16;
+      const room = Math.min(90, el.clientHeight * 0.25);
+      map.flyTo(map.unproject(map.project(m.getLatLng(), zoom).subtract([0, room]), zoom), zoom, { duration: 0.6 });
+    }
+    if (!open) return;
+    if (!fly) { m.openPopup(); return; }
+    let shown = false;
+    const show = () => { if (!shown) { shown = true; m.openPopup(); } };
+    map.once('moveend', show);
+    setTimeout(show, 900);   // in case the map was already there and did not move
   }
 
   pins.forEach((p) => {
@@ -43,7 +53,12 @@
       popupAnchor: [0, -42],
     });
     const m = L.marker([p.lat, p.lng], { icon, title: p.name, riseOnHover: true }).addTo(map);
-    m.bindPopup(`<b>${esc(p.name)}</b><span>${esc(p.address)}</span><a href="${esc(p.dir)}" target="_blank" rel="noopener">${esc(t('contact.directions'))}</a>`, { closeButton: false });
+    m.bindPopup(`<b>${esc(p.name)}</b><span>${esc(p.address)}</span><a href="${esc(p.dir)}" target="_blank" rel="noopener">${esc(t('contact.directions'))}</a>`, {
+      closeButton: false,
+      maxWidth: 240,
+      autoPanPaddingTopLeft: [16, 16],
+      autoPanPaddingBottomRight: [16, 70],   // clear of the zoom buttons and the map credit
+    });
     m.on('click', () => select(p.id, { fly: false, open: false }));
     markers[p.id] = m;
   });
