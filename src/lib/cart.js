@@ -2,6 +2,7 @@
 import { DB, mapItem, getSettings, getGrinds, loc } from './db.js';
 import { t } from './i18n.js';
 import { egp } from './money.js';
+import { imageUrl, storePhotos } from './images.js';
 
 const MAX_QTY = 50;
 const MAX_LINES = 40;
@@ -17,11 +18,15 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
 
   const itemRows = ids.length
     ? (await DB().prepare(`
-        SELECT i.*, p.slug, p.name_ar, p.name_en, p.image, p.kind AS product_kind, p.active AS product_active, p.id AS pid
+        SELECT i.*, p.slug, p.name_ar, p.name_en, p.image, p.photos, p.kind AS product_kind, p.active AS product_active, p.id AS pid
         FROM items i JOIN products p ON p.id = i.product_id
         WHERE i.id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all()).results
     : [];
-  const items = Object.fromEntries(itemRows.map((r) => [r.id, { ...mapItem(r), product_active: r.product_active, product_kind: r.product_kind }]));
+  const items = Object.fromEntries(itemRows.map((r) => [r.id, {
+    ...mapItem(r), product_active: r.product_active, product_kind: r.product_kind,
+    // the cart shows the product's store photo (the book has its own pictures)
+    thumb: imageUrl(storePhotos({ image: r.image, photos: JSON.parse(r.photos || '[]') })[0]),
+  }]));
   const grinds = Object.fromEntries((await getGrinds()).map((g) => [g.id, g]));
   const settings = await getSettings();
 
@@ -53,7 +58,7 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
     ].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');
 
     lines.push({
-      key, item: it.id, productId: it.pid, slug: it.slug, image: it.image,
+      key, item: it.id, productId: it.pid, slug: it.slug, image: it.thumb,
       name: loc(it, 'name', lang), details, size, roast, grind: grindId, spice,
       qty, unit: unit + spice, total: (unit + spice) * qty,
     });
