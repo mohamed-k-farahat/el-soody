@@ -47,7 +47,8 @@ export async function createOrder(input) {
 
   // offers: what the customer saw at checkout must still hold now
   await releaseAbandoned();
-  const offers = await applyOffers(cart, { fulfilment, phone, address, code: input.promo });
+  const device = /^[a-f0-9]{32}$/.test(String(input.device || '')) ? input.device : null;
+  const offers = await applyOffers(cart, { fulfilment, phone, address, code: input.promo, device });
   if (offers.promoError) return { error: 'promo', reason: offers.promoError, min: offers.promoMin };
   if (Number.isInteger(input.expectTotal) && input.expectTotal !== offers.total) return { error: 'offer' };
   const promo = offers.promo;
@@ -62,11 +63,11 @@ export async function createOrder(input) {
 
   const insertOrder = DB().prepare(`
     INSERT INTO orders (code, token, fulfilment, payment_method, payment_status, name, phone, address, notes, lang,
-                        subtotal, delivery_fee, total, discount, delivery_waived, promo_code, welcome)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                        subtotal, delivery_fee, total, discount, delivery_waived, promo_code, welcome, device)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(code, token, fulfilment, payment, payment === 'online' ? 'pending' : 'unpaid',
       name, phone, fulfilment === 'delivery' ? address : '', notes, lang,
-      cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0);
+      cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0, device || '');
   const insertItem = DB().prepare(`
     INSERT INTO order_items (order_id, product_id, item_id, name, details, size, qty, unit_price, line_total)
     VALUES (${orderId}, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -74,7 +75,7 @@ export async function createOrder(input) {
   // The claims hit unique keys if another order took the same one-time offer a moment earlier.
   const claims = [];
   if (offers.welcome) {
-    claims.push(DB().prepare(`INSERT INTO welcome_claims (phone, address_key, order_id) VALUES (?, ?, ${orderId})`).bind(phone, offers.addressKey, token));
+    claims.push(DB().prepare(`INSERT INTO welcome_claims (phone, address_key, device, order_id) VALUES (?, ?, ?, ${orderId})`).bind(phone, offers.addressKey, device, token));
   }
   if (promo) {
     claims.push(DB().prepare(`INSERT INTO promo_uses (promo_id, order_id, phone, slot) VALUES (?, ${orderId}, ?, ?)`).bind(promo.id, token, phone, offers.slot));

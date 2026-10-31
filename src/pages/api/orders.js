@@ -2,14 +2,17 @@
 import { createOrder } from '../../lib/orders.js';
 import { href, t } from '../../lib/i18n.js';
 import { egp } from '../../lib/money.js';
+import { deviceId } from '../../lib/device.js';
 import { startPayment } from '../../lib/paymob.js';
 import { notifyNewOrder } from '../../lib/notify.js';
 
-export async function POST({ request, locals }) {
+export async function POST({ request, locals, cookies, url }) {
   let body;
   try { body = await request.json(); } catch { return Response.json({ error: 'generic' }, { status: 400 }); }
 
-  const result = await createOrder(body);
+  // the device comes from the site's own cookie, never from the request body
+  const device = deviceId({ cookies, url });
+  const result = await createOrder({ ...body, device: device.isNew ? null : device.id });
   if (result.error) {
     if (result.error === 'promo') {
       const lang = body.lang === 'en' ? 'en' : 'ar';

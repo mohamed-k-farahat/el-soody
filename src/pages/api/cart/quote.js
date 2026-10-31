@@ -4,8 +4,9 @@ import { applyOffers, promoGuessBlocked, recordPromoMiss } from '../../../lib/of
 import { normalizePhone } from '../../../lib/orders.js';
 import { t } from '../../../lib/i18n.js';
 import { egp } from '../../../lib/money.js';
+import { deviceId } from '../../../lib/device.js';
 
-export async function POST({ request }) {
+export async function POST({ request, cookies, url }) {
   let body;
   try { body = await request.json(); } catch { return new Response('bad json', { status: 400 }); }
   const lang = body.lang === 'en' ? 'en' : 'ar';
@@ -17,7 +18,9 @@ export async function POST({ request }) {
   let blocked = false;
   if (code.trim() && (await promoGuessBlocked(ip))) { code = ''; blocked = true; }
 
-  const o = await applyOffers(q, { fulfilment, phone: normalizePhone(body.phone), address: String(body.address || ''), code });
+  // a device id only counts once the browser has sent it back (it gets one on its first quote)
+  const device = deviceId({ cookies, url });
+  const o = await applyOffers(q, { fulfilment, phone: normalizePhone(body.phone), address: String(body.address || ''), code, device: device.isNew ? null : device.id });
   if (o.promoError === 'unknown') await recordPromoMiss(ip);
   const promoError = blocked ? 'toomany' : o.promoError;
 

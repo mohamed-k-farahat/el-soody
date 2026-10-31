@@ -25,7 +25,7 @@ const today = cairoToday();
   <form method="post" class="card">
     <input type="hidden" name="action" value="welcome">
     <h2>التوصيل مجاني في أول طلب توصيل</h2>
-    <p class="hint">كل عميل جديد أول طلب توصيل ليه من الموقع بيبقى من غير مصاريف توصيل (البن بيتدفع عادي). مرة واحدة لكل رقم موبايل، ومرة واحدة لكل عنوان، عشان محدش يكررها برقم تاني. لو الطلب اتلغى، العميل بيرجعله العرض.</p>
+    <p class="hint">كل عميل جديد أول طلب توصيل ليه من الموقع بيبقى من غير مصاريف توصيل (البن بيتدفع عادي). مرة واحدة لكل رقم موبايل، ولكل عنوان، ولكل جهاز (موبايل أو كمبيوتر)، عشان محدش يكررها برقم أو عنوان تاني. لو الطلب اتلغى، العميل بيرجعله العرض.</p>
     <div class="row" style="margin-top:.8rem">
       <label class="check"><input type="checkbox" name="welcome_enabled" checked={s.welcome_enabled === '1'}> العرض شغال</label>
       <button class="btn btn--small">احفظ</button>

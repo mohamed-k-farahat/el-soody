@@ -40,24 +40,25 @@ async function promoUsesByPhone(promoId, phone) {
   return results.map((r) => r.slot);
 }
 
-async function welcomeTaken(phone, addrKey) {
-  const row = await DB().prepare('SELECT 1 FROM welcome_claims WHERE phone = ? OR address_key = ? LIMIT 1').bind(phone, addrKey).first();
+async function welcomeTaken(phone, addrKey, device) {
+  const row = await DB().prepare('SELECT 1 FROM welcome_claims WHERE phone = ? OR address_key = ? OR device = ? LIMIT 1').bind(phone, addrKey, device).first();
   return !!row;
 }
 
 /**
  * Works out discounts for a priced cart.
- * cart: result of priceCart(); ctx: { fulfilment, phone (normalized or null), address, code }
+ * cart: result of priceCart(); ctx: { fulfilment, phone (normalized or null), address, code, device (id or null) }
  * Returns { discount, deliveryFee, deliveryWaived, welcome, promo, promoError, promoMin, slot, total }
  */
-export async function applyOffers(cart, { fulfilment, phone, address, code }) {
+export async function applyOffers(cart, { fulfilment, phone, address, code, device }) {
   const s = cart.settings;
   const out = { discount: 0, deliveryFee: cart.deliveryFee, deliveryWaived: 0, welcome: false, promo: null, promoError: '', promoMin: 0, slot: null };
 
-  // 1. welcome: first delivery order per phone and per address, only when there is a fee to waive
+  // 1. welcome: first delivery order per phone, per address and per device, only when there is a fee to waive.
+  //    No device cookie (blocked cookies, scripts) means no welcome.
   const addrKey = addressKey(address);
-  if (s.welcome_enabled === '1' && fulfilment === 'delivery' && cart.deliveryFee > 0 && phone && addrKey.length >= 4
-      && !(await welcomeTaken(phone, addrKey))) {
+  if (s.welcome_enabled === '1' && fulfilment === 'delivery' && cart.deliveryFee > 0 && phone && addrKey.length >= 4 && device
+      && !(await welcomeTaken(phone, addrKey, device))) {
     out.welcome = true;
     out.deliveryWaived = cart.deliveryFee;
     out.deliveryFee = 0;
@@ -143,8 +144,8 @@ export async function reclaimPerks(order) {
   if (!order.perks_released) return;
   const stmts = [DB().prepare('UPDATE orders SET perks_released = 0 WHERE id = ?').bind(order.id)];
   if (order.welcome) {
-    stmts.push(DB().prepare('INSERT OR IGNORE INTO welcome_claims (phone, address_key, order_id) VALUES (?, ?, ?)')
-      .bind(order.phone, addressKey(order.address), order.id));
+    stmts.push(DB().prepare('INSERT OR IGNORE INTO welcome_claims (phone, address_key, device, order_id) VALUES (?, ?, ?, ?)')
+      .bind(order.phone, addressKey(order.address), order.device || null, order.id));
   }
   if (order.promo_code) {
     const p = await getPromoByCode(order.promo_code);
