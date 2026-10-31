@@ -2,7 +2,8 @@
 // Shared shell for every public page: <head> with SEO tags, nav, cart drawer, footer.
 import { t, href, basePath, dir } from '../lib/i18n.js';
 import { STRINGS } from '../lib/strings.js';
-import { getSeo } from '../lib/db.js';
+import { getSeo, getSettings } from '../lib/db.js';
+import { ICONS } from '../lib/icons.js';
 import { imageUrl } from '../lib/images.js';
 
 const {
@@ -17,7 +18,13 @@ const {
 } = Astro.props;
 
 const tr = (k) => t(lang, k);
-const seo = page ? await getSeo(page) : {};
+const [seo, settings] = await Promise.all([page ? getSeo(page) : {}, getSettings()]);
+const socials = [
+  settings.instagram && ['instagram', settings.instagram, 'Instagram'],
+  settings.facebook && ['facebook', settings.facebook, 'Facebook'],
+  settings.tiktok && ['tiktok', settings.tiktok, 'TikTok'],
+  settings.shop_whatsapp && ['whatsapp', `https://wa.me/${settings.shop_whatsapp}`, 'WhatsApp'],
+].filter(Boolean);
 const pageTitle = title || seo[`title_${lang}`] || tr('meta.title.home');
 const pageDesc = description || seo[`desc_${lang}`] || tr('meta.desc');
 const site = Astro.url.origin; // whatever domain served this page, so links follow the real domain
@@ -33,10 +40,11 @@ const NAV = [
   ['menu', '/menu'],
   ['store', '/store'],
   ['shop', '/shop'],
+  ['contact', '/contact'],
 ];
 
 // text the browser scripts need (cart, product picker, checkout)
-const clientPrefixes = ['cart.', 'product.', 'checkout.', 'size.', 'section.', 'roast.', 'book.', 'player.'];
+const clientPrefixes = ['cart.', 'product.', 'checkout.', 'size.', 'section.', 'roast.', 'book.', 'player.', 'form.', 'contact.'];
 const clientStrings = Object.fromEntries(
   Object.entries(STRINGS[lang]).filter(([k]) => clientPrefixes.some((p) => k.startsWith(p)))
 );
@@ -66,7 +74,10 @@ const fonts = bookFonts
   <meta property="og:url" content={canonical}>
   <meta property="og:locale" content={lang === 'ar' ? 'ar_EG' : 'en_US'}>
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" type="image/png" href="/media/logo-sm.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/media/favicon-192.png">
+  <link rel="apple-touch-icon" href="/media/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href={`https://fonts.googleapis.com/css2?${fonts}&display=swap`} rel="stylesheet">
@@ -112,8 +123,15 @@ const fonts = bookFonts
       <p class="footer__tag">{tr('hero.tagline')}</p>
       <nav class="footer__links" aria-label={tr('nav.label')}>
         {NAV.map(([id, p]) => <a href={href(lang, p)}>{tr(`nav.${id}`)}</a>)}
+        <a href={href(lang, '/issues')}>{tr('footer.issues')}</a>
+        <a href={href(lang, '/suggestions')}>{tr('footer.suggestions')}</a>
         <a href={href(lang, '/policies')}>{tr('footer.policies')}</a>
       </nav>
+      {socials.length > 0 && (
+        <div class="socials footer__socials">
+          {socials.map(([icon, url, label]) => <a href={url} target="_blank" rel="noopener" aria-label={label} set:html={ICONS[icon]} />)}
+        </div>
+      )}
       <p class="footer__copy">© {new Date().getFullYear()} {tr('brand')}</p>
     </div>
   </footer>

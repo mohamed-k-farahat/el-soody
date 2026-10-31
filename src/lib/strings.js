@@ -1,5 +1,6 @@
 // UI text in both languages. The original site text is here; store and checkout text lives in strings-store.js.
 import { STORE_STRINGS } from './strings-store.js';
+import { CONTACT_STRINGS } from './strings-contact.js';
 
 export const STRINGS = {
   "ar": {
@@ -222,3 +223,5 @@ export const STRINGS = {
 
 Object.assign(STRINGS.ar, STORE_STRINGS.ar);
 Object.assign(STRINGS.en, STORE_STRINGS.en);
+Object.assign(STRINGS.ar, CONTACT_STRINGS.ar);
+Object.assign(STRINGS.en, CONTACT_STRINGS.en);

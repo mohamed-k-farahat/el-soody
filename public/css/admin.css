@@ -91,6 +91,16 @@ table.t { width: 100%; border-collapse: collapse; }
 .st--cancelled, .st--failed { background: #FCE9E7; color: var(--red); }
 .st--unpaid, .st--pending, .st--refunded { background: #EFE6DA; color: var(--muted); }
 
+/* messages */
+.tabs--light a { font-size: .82rem; padding: .3rem .75rem; }
+.tabs--light a[aria-current="true"] { background: var(--orange-soft); color: var(--ink); border-color: var(--orange); }
+.card--new { border-style: dashed; }
+.msg--new { border-color: #FD9A19; border-inline-start-width: 4px; }
+.msg__head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.msg__time { margin-inline-start: auto; }
+.msg__meta { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .4rem 0 0; font-size: .88rem; color: var(--muted); }
+.msg__text { white-space: pre-line; margin: .7rem 0 .9rem; font-size: 1rem; }
+
 /* order detail */
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .6rem; }
 .facts div { background: #FBF7F1; border-radius: 10px; padding: .55rem .8rem; }
@@ -115,8 +125,8 @@ details.box summary { cursor: pointer; font-weight: 700; }
   /* top bar: brand and logout on the first line, all sections as equal tabs on the second */
   .abar { padding: .5rem .75rem .6rem; gap: .5rem; }
   .abar__brand { flex: 1; }
-  .abar__nav { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(6, 1fr); gap: .2rem; overflow: visible; }
-  .abar__nav a { padding: .45rem .1rem; text-align: center; font-size: .8rem; border-radius: 10px; background: rgba(255,255,255,.05); }
+  .abar__nav { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; overflow: visible; }
+  .abar__nav a { padding: .4rem .1rem; text-align: center; font-size: .82rem; border-radius: 10px; background: rgba(255,255,255,.05); }
   .abar__nav .badge--new { margin-inline-start: .15rem; padding: 0 .35rem; min-width: 0; }
 
   .amain { padding: 1rem .75rem 4rem; }

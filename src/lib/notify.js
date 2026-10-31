@@ -14,7 +14,7 @@ export async function notifyNewOrder(order) {
     const text = [
       `New order ${order.code}`,
       `${order.name}  ${order.phone}`,
-      order.fulfilment === 'delivery' ? `Delivery to: ${order.address}` : 'Pickup at the shop',
+      order.fulfilment === 'delivery' ? `Delivery to: ${order.address}` : `Pickup at the shop${order.branch_name_en ? `: ${order.branch_name_en} (${order.branch_name_ar})` : ''}`,
       `Payment: ${order.payment_method === 'cod' ? 'cash on delivery' : 'online'}`,
       '',
       ...lines,

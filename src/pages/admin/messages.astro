@@ -1,0 +1,71 @@
+---
+// Messages from the contact, issues and suggestions forms
+import Admin from '../../layouts/Admin.astro';
+import { DB } from '../../lib/db.js';
+import { cairoTime, waNumber } from '../../lib/admin.js';
+
+const KIND_AR = { contact: 'رسالة', issue: 'مشكلة', suggestion: 'اقتراح' };
+const KIND_CLS = { contact: 'confirmed', issue: 'cancelled', suggestion: 'completed' };
+const TABS = { new: 'جديدة', done: 'خلصت', all: 'الكل' };
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  const status = form.get('status') === 'done' ? 'done' : 'new';
+  if (Number.isInteger(id)) await DB().prepare('UPDATE messages SET status = ? WHERE id = ?').bind(status, id).run();
+  return Astro.redirect(`/admin/messages?tab=${encodeURIComponent(String(form.get('tab') || 'new'))}`, 303);
+}
+
+const tab = Object.keys(TABS).includes(Astro.url.searchParams.get('tab')) ? Astro.url.searchParams.get('tab') : 'new';
+const kind = Object.keys(KIND_AR).includes(Astro.url.searchParams.get('kind')) ? Astro.url.searchParams.get('kind') : '';
+const where = [tab !== 'all' && 'm.status = ?', kind && 'm.kind = ?'].filter(Boolean);
+const binds = [tab !== 'all' && tab, kind].filter(Boolean);
+const [{ results: messages }, counts] = await Promise.all([
+  DB().prepare(`SELECT m.*, b.name_ar AS branch FROM messages m LEFT JOIN branches b ON b.id = m.branch_id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY m.created_at DESC LIMIT 200`).bind(...binds).all(),
+  DB().prepare("SELECT sum(status = 'new') AS new, sum(status = 'done') AS done, count(*) AS all_ FROM messages").first(),
+]);
+const count = { new: counts.new || 0, done: counts.done || 0, all: counts.all_ || 0 };
+const link = (t, k = kind) => `/admin/messages?tab=${t}${k ? `&kind=${k}` : ''}`;
+---
+<Admin title="الرسائل" active="messages" refresh={120}>
+  <h1>الرسائل</h1>
+  <nav class="tabs" aria-label="حالة الرسائل">
+    {Object.entries(TABS).map(([k, label]) => <a href={link(k)} aria-current={k === tab ? 'true' : undefined}>{label} <span class="badge">{count[k]}</span></a>)}
+  </nav>
+  <nav class="tabs tabs--light" aria-label="نوع الرسالة">
+    <a href={link(tab, '')} aria-current={!kind ? 'true' : undefined}>كل الأنواع</a>
+    {Object.entries(KIND_AR).map(([k, label]) => <a href={link(tab, k)} aria-current={k === kind ? 'true' : undefined}>{label}</a>)}
+  </nav>
+
+  {messages.length === 0 ? <p class="card">مفيش رسايل هنا.</p> : messages.map((m) => (
+    <article class={`card msg${m.status === 'new' ? ' msg--new' : ''}`}>
+      <header class="msg__head">
+        <span class={`st st--${KIND_CLS[m.kind]}`}>{KIND_AR[m.kind]}</span>
+        <b>{m.name || 'من غير اسم'}</b>
+        {m.phone && <span class="hint" dir="ltr">{m.phone}</span>}
+        <span class="hint msg__time">{cairoTime(m.created_at)}</span>
+      </header>
+      {(m.order_code || m.branch) && (
+        <p class="msg__meta">
+          {m.order_code && <span>طلب <a href={`/admin?tab=all&q=${encodeURIComponent(m.order_code)}`} dir="ltr">{m.order_code}</a></span>}
+          {m.branch && <span>{m.branch}</span>}
+          {m.lang === 'en' && <span>بالإنجليزي</span>}
+        </p>
+      )}
+      <p class="msg__text">{m.message}</p>
+      <div class="row">
+        {m.phone && <a class="btn btn--small" href={`tel:${m.phone}`}>📞 اتصل</a>}
+        {m.phone && <a class="btn btn--small" href={`https://wa.me/${waNumber(m.phone)}`} target="_blank" rel="noopener">واتساب</a>}
+        <form method="post" style="margin-inline-start:auto">
+          <input type="hidden" name="id" value={m.id}>
+          <input type="hidden" name="tab" value={tab}>
+          {m.status === 'new'
+            ? <button class="btn btn--small btn--primary" name="status" value="done">✓ خلصت</button>
+            : <button class="btn btn--small" name="status" value="new">رجّعها جديدة</button>}
+        </form>
+      </div>
+    </article>
+  ))}
+  <p class="hint">الرسايل بتيجي من صفحات «كلّمنا» و«بلّغ عن مشكلة» و«اقتراحاتك» في الموقع.</p>
+</Admin>

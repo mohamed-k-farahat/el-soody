@@ -28,6 +28,7 @@
     if (!lines.length) { showEmpty(); return null; }
     const fulfilment = value('fulfilment') || 'pickup';
     $('addressField').hidden = fulfilment !== 'delivery';
+    if ($('branchPick')) $('branchPick').hidden = fulfilment !== 'pickup';
     const mine = ++seq;
     try {
       const q = await cart.quote(lines, fulfilment, { phone: $('phone').value, address: $('address').value, promo });
@@ -104,11 +105,18 @@
     setError('phone', phone.length < 10 ? t('checkout.err.phone') : '');
     const needsAddress = value('fulfilment') === 'delivery';
     setError('address', needsAddress && $('address').value.trim().length < 5 ? t('checkout.err.address') : '');
+    const needsBranch = value('fulfilment') === 'pickup' && $('branchPick');
+    const branchMissing = needsBranch && !value('branch');
+    $('err-branch') && ($('err-branch').textContent = branchMissing ? t('checkout.err.branch') : '');
+    if (branchMissing) { $('branchPick').scrollIntoView({ behavior: 'smooth', block: 'center' }); ok = false; }
     for (const f of ['name', 'phone', 'address']) if ($(f).getAttribute('aria-invalid') === 'true') { if (ok) $(f).focus(); ok = false; }
     return ok;
   }
 
-  form.addEventListener('change', (e) => { if (['fulfilment', 'phone', 'address'].includes(e.target.name)) refresh(); });
+  form.addEventListener('change', (e) => {
+    if (['fulfilment', 'phone', 'address'].includes(e.target.name)) refresh();
+    if (e.target.name === 'branch') $('err-branch').textContent = '';
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -139,6 +147,7 @@
           phone: $('phone').value,
           address: $('address').value,
           notes: $('notes').value,
+          branch: value('branch') || '',
           promo,
           expectTotal: q.total,
         }),
@@ -149,7 +158,8 @@
         location.href = data.redirect;
         return;
       }
-      if (data.field) { setError(data.field, t(`checkout.err.${data.error}`)); $(data.field).focus(); }
+      if (data.field === 'branch') { $('err-branch').textContent = t('checkout.err.branch'); $('branchPick').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      else if (data.field) { setError(data.field, t(`checkout.err.${data.error}`)); $(data.field).focus(); }
       else if (data.error === 'changed' || data.error === 'empty') { $('formErr').textContent = t('checkout.err.changed'); refresh(); }
       else if (data.error === 'promo') { promo = ''; showPromo(null, data.text); $('formErr').textContent = t('checkout.err.promo'); refresh(); }
       else if (data.error === 'offer') { $('formErr').textContent = t('checkout.err.offer'); refresh(); }

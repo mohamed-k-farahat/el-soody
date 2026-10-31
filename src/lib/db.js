@@ -83,6 +83,11 @@ export async function getGrinds({ includeInactive = false } = {}) {
   return results;
 }
 
+export async function getBranches({ includeInactive = false } = {}) {
+  const where = includeInactive ? '' : 'WHERE active = 1';
+  return (await DB().prepare(`SELECT * FROM branches ${where} ORDER BY sort, id`).all()).results;
+}
+
 export async function getSeo(page) {
   return (await DB().prepare('SELECT * FROM seo_pages WHERE page = ?').bind(page).first()) || {};
 }

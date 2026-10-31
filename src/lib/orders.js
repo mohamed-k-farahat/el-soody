@@ -41,6 +41,17 @@ export async function createOrder(input) {
   if (!phone) return { error: 'phone', field: 'phone' };
   if (fulfilment === 'delivery' && address.length < 5) return { error: 'address', field: 'address' };
 
+  // pickup: which branch (chosen by the customer when there is more than one)
+  let branchId = null;
+  if (fulfilment === 'pickup') {
+    const { results: pickupBranches } = await DB().prepare('SELECT id FROM branches WHERE active = 1 AND pickup = 1').all();
+    if (pickupBranches.length === 1) branchId = pickupBranches[0].id;
+    else if (pickupBranches.length > 1) {
+      branchId = pickupBranches.find((b) => b.id === Number(input.branch))?.id ?? null;
+      if (!branchId) return { error: 'branch', field: 'branch' };
+    }
+  }
+
   const cart = await priceCart(input.lines, { fulfilment, lang });
   if (!cart.lines.length) return { error: 'empty' };
   if (cart.problems.length) return { error: 'changed' };
@@ -63,11 +74,11 @@ export async function createOrder(input) {
 
   const insertOrder = DB().prepare(`
     INSERT INTO orders (code, token, fulfilment, payment_method, payment_status, name, phone, address, notes, lang,
-                        subtotal, delivery_fee, total, discount, delivery_waived, promo_code, welcome, device)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                        subtotal, delivery_fee, total, discount, delivery_waived, promo_code, welcome, device, branch_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(code, token, fulfilment, payment, payment === 'online' ? 'pending' : 'unpaid',
       name, phone, fulfilment === 'delivery' ? address : '', notes, lang,
-      cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0, device || '');
+      cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0, device || '', branchId);
   const insertItem = DB().prepare(`
     INSERT INTO order_items (order_id, product_id, item_id, name, details, size, qty, unit_price, line_total)
     VALUES (${orderId}, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -102,16 +113,21 @@ export async function setOrderStatus(order, status) {
   else if (order.status === 'cancelled') await reclaimPerks(order);
 }
 
+const ORDER_SELECT = `
+  SELECT o.*, b.name_ar AS branch_name_ar, b.name_en AS branch_name_en, b.address_ar AS branch_address_ar,
+         b.address_en AS branch_address_en, b.lat AS branch_lat, b.lng AS branch_lng
+  FROM orders o LEFT JOIN branches b ON b.id = o.branch_id`;
+
 export async function getOrderByToken(token) {
   if (!/^[a-f0-9]{32}$/.test(String(token))) return null;
-  const order = await DB().prepare('SELECT * FROM orders WHERE token = ?').bind(token).first();
+  const order = await DB().prepare(`${ORDER_SELECT} WHERE o.token = ?`).bind(token).first();
   if (!order) return null;
   const { results } = await DB().prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id').bind(order.id).all();
   return { ...order, items: results };
 }
 
 export async function getOrderById(id) {
-  const order = await DB().prepare('SELECT * FROM orders WHERE id = ?').bind(id).first();
+  const order = await DB().prepare(`${ORDER_SELECT} WHERE o.id = ?`).bind(id).first();
   if (!order) return null;
   const { results } = await DB().prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id').bind(order.id).all();
   return { ...order, items: results };

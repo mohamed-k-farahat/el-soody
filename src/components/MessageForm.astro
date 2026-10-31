@@ -1,0 +1,55 @@
+---
+// The message form used on the contact, issues and suggestions pages (sent by /js/message-form.js)
+import { t } from '../lib/i18n.js';
+import { loc } from '../lib/db.js';
+
+const { lang, kind, branches = [] } = Astro.props;
+const tr = (k) => t(lang, k);
+const optional = kind === 'suggestion';
+const id = (f) => `${kind}-${f}`;
+---
+<form class="msgform panel" data-kind={kind} novalidate>
+  <div class="msgform__fields">
+    <div class="field">
+      <label for={id('name')}>{tr(optional ? 'form.nameOptional' : 'form.name')}</label>
+      <input id={id('name')} name="name" autocomplete="name" maxlength="80" required={!optional}>
+      <span class="field__err" data-err="name"></span>
+    </div>
+    <div class="field">
+      <label for={id('phone')}>{tr(optional ? 'form.phoneOptional' : 'form.phone')}</label>
+      <input id={id('phone')} name="phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="01xxxxxxxxx" required={!optional}>
+      <span class="field__err" data-err="phone"></span>
+    </div>
+    {kind === 'issue' && (
+      <div class="field">
+        <label for={id('order')}>{tr('form.order')}</label>
+        <input id={id('order')} name="order" dir="ltr" maxlength="20" placeholder="S1001" autocomplete="off">
+      </div>
+    )}
+    {kind !== 'suggestion' && branches.length > 1 && (
+      <div class="field">
+        <label for={id('branch')}>{tr('form.branch')}</label>
+        <select id={id('branch')} name="branch">
+          <option value="">{tr('form.branchAny')}</option>
+          {branches.map((b) => <option value={b.id}>{loc(b, 'name', lang)}</option>)}
+        </select>
+      </div>
+    )}
+    <div class="field msgform__wide">
+      <label for={id('message')}>{tr(`form.message.${kind}`)}</label>
+      <textarea id={id('message')} name="message" rows="5" maxlength="2000" required></textarea>
+      <span class="field__err" data-err="message"></span>
+    </div>
+    <!-- left empty by people; bots tend to fill it -->
+    <div class="msgform__trap" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+  </div>
+  <div class="msgform__foot">
+    <button class="btn btn--primary" type="submit">{tr('form.send')}</button>
+    <p class="form-err" role="alert"></p>
+  </div>
+  <div class="msgform__done" hidden>
+    <span class="msgform__tick" aria-hidden="true">✓</span>
+    <p role="status">{tr(kind === 'suggestion' ? 'form.sentSuggestion' : 'form.sent')}</p>
+    <button class="btn btn--ghost btn--sm" type="button" data-again>{tr('form.another')}</button>
+  </div>
+</form>

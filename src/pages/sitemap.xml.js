@@ -2,7 +2,7 @@
 import { DB } from '../lib/db.js';
 import { href } from '../lib/i18n.js';
 
-const STATIC = ['/', '/store', '/stories', '/menu', '/shop', '/policies'];
+const STATIC = ['/', '/store', '/stories', '/menu', '/shop', '/contact', '/issues', '/suggestions', '/policies'];
 
 export async function GET({ url }) {
   const origin = url.origin;

@@ -42,7 +42,7 @@ const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أ
       <div><dt>الوقت</dt><dd>{cairoTime(order.created_at)}</dd></div>
       <div><dt>العميل</dt><dd>{order.name}</dd></div>
       <div><dt>الموبايل</dt><dd dir="ltr">{order.phone}</dd></div>
-      <div><dt>الاستلام</dt><dd>{order.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</dd></div>
+      <div><dt>الاستلام</dt><dd>{order.fulfilment === 'delivery' ? 'توصيل' : `من المحل${order.branch_name_ar ? `، ${order.branch_name_ar}` : ''}`}</dd></div>
       {order.fulfilment === 'delivery' && <div style="grid-column: 1 / -1"><dt>العنوان</dt><dd>{order.address}</dd></div>}
       <div><dt>الدفع</dt><dd>{order.payment_method === 'cod' ? 'كاش عند الاستلام' : 'أونلاين'} <span class={`st st--${order.payment_status}`}>{PAY_AR[order.payment_status]}</span></dd></div>
       <div><dt>لغة العميل</dt><dd>{order.lang === 'en' ? 'English' : 'عربي'}</dd></div>

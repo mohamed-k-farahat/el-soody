@@ -1,0 +1,124 @@
+---
+// Branches: names, addresses, hours, map pin (from a Google Maps link) and whether orders can be picked up there
+import Admin from '../../layouts/Admin.astro';
+import { DB, getBranches } from '../../lib/db.js';
+import { str, flag } from '../../lib/admin.js';
+
+/**
+ * Coordinates from what the owner pasted: "30.79, 30.98" or any Google Maps link,
+ * including short share links (maps.app.goo.gl), which are followed to the full link.
+ * Returns { lat, lng } or null.
+ */
+async function readMapLink(input) {
+  const raw = String(input || '').trim();
+  const pair = raw.match(/^(-?\d{1,2}\.\d+)\s*[,،]\s*(-?\d{1,3}\.\d+)$/);
+  if (pair) return { lat: Number(pair[1]), lng: Number(pair[2]) };
+  let url = raw;
+  for (let hop = 0; hop < 4 && /^https:\/\/(maps\.app\.goo\.gl|goo\.gl)\//.test(url); hop++) {
+    try {
+      const res = await fetch(url, { redirect: 'manual' });
+      const next = res.headers.get('location');
+      if (!next) break;
+      url = new URL(next, url).href;
+    } catch { break; }
+  }
+  if (!/^https:\/\/([a-z]+\.)?google\.[a-z.]+\//.test(url)) return null;
+  const decoded = decodeURIComponent(url);
+  const m = decoded.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)                  // the place itself
+    || decoded.match(/[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+    || decoded.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);                             // map center, last resort
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
+}
+
+const errors = [];
+let branches = await getBranches({ includeInactive: true });
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const ops = [];
+  const read = async (prefix, current) => {
+    const name_ar = str(form, `${prefix}name_ar`, 80);
+    if (!name_ar) return null;
+    const mapText = str(form, `${prefix}map`, 600);
+    const shown = current ? (current.maps_url || (current.lat != null ? `${current.lat},${current.lng}` : '')) : '';
+    let pin = current ? { lat: current.lat, lng: current.lng } : { lat: null, lng: null };
+    let maps_url = current?.maps_url || '';
+    if (mapText !== shown) {
+      if (!mapText) { pin = { lat: null, lng: null }; maps_url = ''; }
+      else {
+        const found = await readMapLink(mapText);
+        if (!found) errors.push(`مش قادر أقرا مكان «${name_ar}» من الرابط. افتح الفرع في جوجل ماب، دوس مشاركة وانسخ الرابط، أو اكتب الإحداثيات زي 30.7955, 30.9889`);
+        else { pin = found; maps_url = /^https:\/\//.test(mapText) ? mapText : ''; }
+      }
+    }
+    return {
+      name_ar, name_en: str(form, `${prefix}name_en`, 80) || name_ar,
+      address_ar: str(form, `${prefix}address_ar`, 200), address_en: str(form, `${prefix}address_en`, 200),
+      phone: str(form, `${prefix}phone`, 30), hours_ar: str(form, `${prefix}hours_ar`, 120), hours_en: str(form, `${prefix}hours_en`, 120),
+      lat: pin.lat, lng: pin.lng, maps_url,
+      pickup: flag(form, `${prefix}pickup`), active: flag(form, `${prefix}active`),
+      sort: Math.max(0, Math.min(999, Number(form.get(`${prefix}sort`)) || 0)),
+    };
+  };
+  const COLS = ['name_ar', 'name_en', 'address_ar', 'address_en', 'phone', 'hours_ar', 'hours_en', 'lat', 'lng', 'maps_url', 'pickup', 'active', 'sort'];
+
+  for (const b of branches) {
+    if (form.get(`b${b.id}_delete`)) { ops.push(DB().prepare('DELETE FROM branches WHERE id = ?').bind(b.id)); continue; }
+    const v = await read(`b${b.id}_`, b);
+    if (!v) { errors.push('كل فرع لازم يكون ليه اسم بالعربي.'); continue; }
+    ops.push(DB().prepare(`UPDATE branches SET ${COLS.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).bind(...COLS.map((c) => v[c]), b.id));
+  }
+  const fresh = await read('new_', null);
+  if (fresh) ops.push(DB().prepare(`INSERT INTO branches (${COLS.join(', ')}) VALUES (${COLS.map(() => '?').join(', ')})`).bind(...COLS.map((c) => fresh[c])));
+
+  if (!errors.length) {
+    if (ops.length) await DB().batch(ops);
+    return Astro.redirect('/admin/branches?saved=1', 303);
+  }
+}
+
+const rows = [...branches.map((b) => ({ b, p: `b${b.id}_` })), { b: null, p: 'new_' }];
+const shownMap = (b) => (b ? b.maps_url || (b.lat != null ? `${b.lat},${b.lng}` : '') : '');
+---
+<Admin title="الفروع" active="settings">
+  <div class="spread">
+    <h1>الفروع</h1>
+    <div class="row">
+      <a class="btn" href="/admin/settings">← الإعدادات</a>
+      <a class="btn" href="/contact" target="_blank" rel="noopener">صفحة كلّمنا ↗</a>
+    </div>
+  </div>
+  <p class="hint">الفروع بتظهر على الخريطة في صفحة «كلّمنا»، وفي صفحة المحل، والعميل بيختار منها لما يستلم طلبه من المحل.</p>
+  {errors.length > 0 && <div class="errors">{errors.map((e) => <div>{e}</div>)}</div>}
+
+  <form method="post">
+    {rows.map(({ b, p }, i) => (
+      <section class={`card${b ? '' : ' card--new'}`}>
+        <div class="spread" style="margin-bottom:.6rem">
+          <h2 style="margin:0">{b ? `${i + 1}. ${b.name_ar}` : 'فرع جديد'}</h2>
+          {b && b.lat != null && <a class="btn btn--small" href={`https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lng}`} target="_blank" rel="noopener">شوف الدبوس ↗</a>}
+        </div>
+        <div class="grid2">
+          <label class="f">اسم الفرع بالعربي<input type="text" name={`${p}name_ar`} value={b?.name_ar || ''} placeholder={b ? '' : 'مثلا: فرع الاستاد'}></label>
+          <label class="f">Branch name in English<input type="text" name={`${p}name_en`} value={b?.name_en || ''} dir="ltr"></label>
+          <label class="f">العنوان بالعربي<input type="text" name={`${p}address_ar`} value={b?.address_ar || ''}></label>
+          <label class="f">Address in English<input type="text" name={`${p}address_en`} value={b?.address_en || ''} dir="ltr"></label>
+          <label class="f">مواعيد الفرع بالعربي (اختياري)<input type="text" name={`${p}hours_ar`} value={b?.hours_ar || ''} placeholder="مثلا: كل يوم من ٩ الصبح لـ ١٢ بالليل"></label>
+          <label class="f">Opening hours in English (optional)<input type="text" name={`${p}hours_en`} value={b?.hours_en || ''} dir="ltr"></label>
+          <label class="f">تليفون الفرع (اختياري)<input type="tel" name={`${p}phone`} value={b?.phone || ''} dir="ltr"></label>
+          <label class="f">مكانه على الخريطة
+            <input type="text" name={`${p}map`} value={shownMap(b)} dir="ltr" placeholder="https://maps.app.goo.gl/...">
+            <span class="hint">افتح الفرع في جوجل ماب، دوس «مشاركة» وانسخ الرابط هنا. أو اكتب الإحداثيات.</span>
+          </label>
+        </div>
+        <div class="row">
+          <label class="check"><input type="checkbox" name={`${p}active`} checked={b ? !!b.active : true}> ظاهر في الموقع</label>
+          <label class="check"><input type="checkbox" name={`${p}pickup`} checked={b ? !!b.pickup : true}> ينفع يستلم منه</label>
+          <label class="f" style="margin:0;display:flex;align-items:center;gap:.5rem">الترتيب <input type="number" name={`${p}sort`} value={b?.sort ?? branches.length + 1} style="width:80px"></label>
+          {b && <label class="check" style="color:var(--red);margin-inline-start:auto"><input type="checkbox" name={`${p}delete`}> امسح الفرع</label>}
+        </div>
+      </section>
+    ))}
+    <div class="savebar"><button class="btn btn--primary">احفظ الفروع</button></div>
+  </form>
+</Admin>

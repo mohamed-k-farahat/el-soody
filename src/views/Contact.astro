@@ -1,0 +1,123 @@
+---
+// Contact: ways to reach us, the branches on a map, links to the issue and suggestion forms, and a message form
+import Base from '../layouts/Base.astro';
+import MessageForm from '../components/MessageForm.astro';
+import { t, href } from '../lib/i18n.js';
+import { getSettings, getBranches, loc } from '../lib/db.js';
+import { ICONS } from '../lib/icons.js';
+
+const { lang } = Astro.props;
+const tr = (k) => t(lang, k);
+const [s, branches] = await Promise.all([getSettings(), getBranches()]);
+
+const ways = [
+  s.shop_phone && { icon: 'phone', label: tr('contact.call'), text: s.shop_phone, link: `tel:${s.shop_phone.replace(/\s/g, '')}`, ltr: true },
+  s.shop_whatsapp && { icon: 'whatsapp', label: tr('contact.whatsapp'), text: `+${s.shop_whatsapp}`, link: `https://wa.me/${s.shop_whatsapp}`, ltr: true },
+  s.instagram && { icon: 'instagram', label: tr('contact.instagram'), text: '@' + (s.instagram.match(/instagram\.com\/([^/?#]+)/)?.[1] || 'elsoodycoffee'), link: s.instagram, ltr: true },
+  s.facebook && { icon: 'facebook', label: tr('contact.facebook'), text: tr('brand'), link: s.facebook },
+  s.tiktok && { icon: 'tiktok', label: 'TikTok', text: 'TikTok', link: s.tiktok },
+].filter(Boolean);
+
+const mapUrl = (b) => b.maps_url || (b.lat != null ? `https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address_ar)}`);
+const dirUrl = (b) => `https://www.google.com/maps/dir/?api=1&destination=${b.lat != null ? `${b.lat},${b.lng}` : encodeURIComponent(b.address_ar)}`;
+const pins = branches.filter((b) => b.lat != null).map((b, i) => ({
+  id: b.id, n: branches.indexOf(b) + 1, lat: b.lat, lng: b.lng,
+  name: loc(b, 'name', lang), address: loc(b, 'address', lang), dir: dirUrl(b),
+}));
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': branches.map((b) => ({
+    '@type': 'CafeOrCoffeeShop',
+    name: `${tr('brand')}, ${loc(b, 'name', lang)}`,
+    address: { '@type': 'PostalAddress', streetAddress: loc(b, 'address', lang), addressLocality: lang === 'ar' ? 'طنطا' : 'Tanta', addressCountry: 'EG' },
+    ...(b.lat != null && { geo: { '@type': 'GeoCoordinates', latitude: b.lat, longitude: b.lng } }),
+    ...((b.phone || s.shop_phone) && { telephone: b.phone || s.shop_phone }),
+    hasMap: mapUrl(b),
+  })),
+};
+---
+<Base lang={lang} page="contact" structuredData={structuredData}>
+  <link slot="head" rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link slot="head" rel="stylesheet" href="/css/contact.css">
+
+  <section class="page-head page-head--book">
+    <div class="container">
+      <p class="eyebrow">{tr('contact.eyebrow')}</p>
+      <h1>{tr('contact.title')}</h1>
+      <p>{tr('contact.lead')}</p>
+    </div>
+  </section>
+
+  {ways.length > 0 && (
+    <section class="section ways">
+      <div class="container ways__grid">
+        {ways.map((w) => (
+          <a class="way reveal" href={w.link} target={w.link.startsWith('http') ? '_blank' : undefined} rel="noopener">
+            <span class="way__ico" set:html={ICONS[w.icon]} />
+            <span class="way__label">{w.label}</span>
+            <span class="way__text" dir={w.ltr ? 'ltr' : undefined}>{w.text}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {branches.length > 0 && (
+    <section class="section branches" id="branches">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="section__orn orn" aria-hidden="true"></span>
+          <h2 class="h2">{tr('contact.branches')}</h2>
+          {pins.length > 1 && <p class="branches__lead">{tr('contact.branchesLead')}</p>}
+        </header>
+        <div class="branches__grid">
+          <ol class="branch-list">
+            {branches.map((b, i) => (
+              <li class="branch" data-branch={b.id} tabindex={b.lat != null ? 0 : undefined}>
+                <span class="branch__n" aria-hidden="true">{i + 1}</span>
+                <div class="branch__body">
+                  <h3 class="branch__name">{loc(b, 'name', lang)}</h3>
+                  <p class="branch__addr">{loc(b, 'address', lang)}</p>
+                  {loc(b, 'hours', lang) && <p class="branch__hours">{loc(b, 'hours', lang)}</p>}
+                  <div class="branch__actions">
+                    <a class="chip chip--main" href={dirUrl(b)} target="_blank" rel="noopener"><span set:html={ICONS.directions} />{tr('contact.directions')}</a>
+                    <a class="chip" href={mapUrl(b)} target="_blank" rel="noopener"><span set:html={ICONS.pin} />{tr('contact.openMaps')}</a>
+                    {(b.phone || s.shop_phone) && <a class="chip" href={`tel:${(b.phone || s.shop_phone).replace(/\s/g, '')}`}><span set:html={ICONS.phone} /><span dir="ltr">{b.phone || s.shop_phone}</span></a>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+          {pins.length > 0 && <div class="branch-map" id="branchMap" role="region" aria-label={tr('contact.mapLabel')}></div>}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="section reach">
+    <div class="container">
+      <div class="reach__cards">
+        <a class="reach-card reveal" href={href(lang, '/issues')}>
+          <span class="reach-card__ico" set:html={ICONS.alert} />
+          <span><b>{tr('contact.issueTitle')}</b><small>{tr('contact.issueText')}</small></span>
+        </a>
+        <a class="reach-card reveal" href={href(lang, '/suggestions')}>
+          <span class="reach-card__ico" set:html={ICONS.bulb} />
+          <span><b>{tr('contact.suggestTitle')}</b><small>{tr('contact.suggestText')}</small></span>
+        </a>
+      </div>
+
+      <div class="reach__form">
+        <h2 class="h2">{tr('contact.formTitle')}</h2>
+        <p class="reach__lead">{tr('contact.formLead')}</p>
+        <MessageForm lang={lang} kind="contact" branches={branches} />
+      </div>
+    </div>
+  </section>
+
+  <script slot="scripts" is:inline type="application/json" id="branchPins" set:html={JSON.stringify(pins)} />
+  <script slot="scripts" is:inline src="/vendor/leaflet/leaflet.js"></script>
+  <script slot="scripts" is:inline src="/js/branch-map.js"></script>
+  <script slot="scripts" is:inline src="/js/message-form.js"></script>
+</Base>

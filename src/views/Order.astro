@@ -46,6 +46,14 @@ const waLink = settings.shop_whatsapp ? `https://wa.me/${settings.shop_whatsapp}
             <div><dt>{tr('order.status')}</dt><dd>{tr(`status.${order.status}`)}</dd></div>
             <div><dt>{tr('order.payment')}</dt><dd>{tr(`pay.${order.payment_method}`)}, {tr(`pay.${order.payment_status}`)}</dd></div>
             <div><dt>{tr('checkout.how')}</dt><dd>{order.fulfilment === 'delivery' ? `${tr('checkout.delivery')}: ${order.address}` : tr('checkout.pickup')}</dd></div>
+            {order.fulfilment === 'pickup' && order.branch_id && (
+              <div>
+                <dt>{tr('order.branch')}</dt>
+                <dd>{order[`branch_name_${lang}`] || order.branch_name_ar}<small class="order__addr">{order[`branch_address_${lang}`] || order.branch_address_ar}</small>
+                  {order.branch_lat != null && <a class="order__dir" href={`https://www.google.com/maps/dir/?api=1&destination=${order.branch_lat},${order.branch_lng}`} target="_blank" rel="noopener">{tr('contact.directions')}</a>}
+                </dd>
+              </div>
+            )}
             <div><dt>{tr('checkout.total')}</dt><dd>{egp(order.total, lang)}</dd></div>
           </dl>
 

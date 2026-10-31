@@ -1,0 +1,38 @@
+---
+// The "report a problem" and "suggestions" pages: a short intro and the message form
+import Base from '../layouts/Base.astro';
+import MessageForm from '../components/MessageForm.astro';
+import { t, href } from '../lib/i18n.js';
+import { getBranches } from '../lib/db.js';
+import { ICONS } from '../lib/icons.js';
+
+const { lang, kind } = Astro.props;          // kind: issue | suggestion
+const tr = (k) => t(lang, k);
+const key = kind === 'issue' ? 'issues' : 'suggest';
+const branches = await getBranches();
+---
+<Base lang={lang} page={kind === 'issue' ? 'issues' : 'suggestions'}>
+  <link slot="head" rel="stylesheet" href="/css/contact.css">
+
+  <section class="page-head page-head--book">
+    <div class="container">
+      <span class="page-head__ico" set:html={ICONS[kind === 'issue' ? 'alert' : 'bulb']} />
+      <p class="eyebrow">{tr(`${key}.eyebrow`)}</p>
+      <h1>{tr(`${key}.title`)}</h1>
+      <p>{tr(`${key}.lead`)}</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container feedback">
+      <MessageForm lang={lang} kind={kind} branches={branches} />
+      <p class="feedback__other">
+        <a href={href(lang, kind === 'issue' ? '/suggestions' : '/issues')}>{tr(kind === 'issue' ? 'contact.suggestTitle' : 'contact.issueTitle')}</a>
+        <span aria-hidden="true">·</span>
+        <a href={href(lang, '/contact')}>{tr('contact.eyebrow')}</a>
+      </p>
+    </div>
+  </section>
+
+  <script slot="scripts" is:inline src="/js/message-form.js"></script>
+</Base>

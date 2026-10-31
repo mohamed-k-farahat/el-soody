@@ -1,13 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
 import { t, href } from '../lib/i18n.js';
-import { getSettings } from '../lib/db.js';
+import { getSettings, getBranches, loc } from '../lib/db.js';
 import { egp } from '../lib/money.js';
 import { paymobReady } from '../lib/paymob.js';
 
 const { lang } = Astro.props;
 const tr = (k) => t(lang, k);
-const s = await getSettings();
+const [s, branches] = await Promise.all([getSettings(), getBranches()]);
+const pickupBranches = branches.filter((b) => b.pickup);
 const online = s.online && paymobReady();
 const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
 const welcome = s.welcome_enabled === '1' && s.deliveryFee > 0;
@@ -44,6 +45,20 @@ const welcome = s.welcome_enabled === '1' && s.deliveryFee > 0;
                 </label>
               )}
             </div>
+            {s.pickup && pickupBranches.length > 1 && (
+              <fieldset class="branch-pick" id="branchPick" hidden>
+                <legend>{tr('checkout.branch')}</legend>
+                <div class="choice">
+                  {pickupBranches.map((b) => (
+                    <label>
+                      <input type="radio" name="branch" value={b.id}>
+                      <span><b>{loc(b, 'name', lang)}</b><small>{loc(b, 'address', lang)}</small></span>
+                    </label>
+                  ))}
+                </div>
+                <span class="field__err" id="err-branch"></span>
+              </fieldset>
+            )}
           </div>
 
           <div class="panel">

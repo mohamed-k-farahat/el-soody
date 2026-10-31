@@ -3,12 +3,16 @@
 import { DB } from '../lib/db.js';
 
 const { title = 'لوحة التحكم', active = '', refresh = 0 } = Astro.props;
-const newCount = (await DB().prepare("SELECT count(*) AS n FROM orders WHERE status = 'new'").first()).n;
+const [newCount, newMessages] = await Promise.all([
+  DB().prepare("SELECT count(*) AS n FROM orders WHERE status = 'new'").first().then((r) => r.n),
+  DB().prepare("SELECT count(*) AS n FROM messages WHERE status = 'new'").first().then((r) => r.n),
+]);
 const NAV = [
   ['orders', '/admin', 'الطلبات'],
   ['prices', '/admin/prices', 'الأسعار'],
   ['products', '/admin/products', 'المنتجات'],
   ['promos', '/admin/promos', 'العروض'],
+  ['messages', '/admin/messages', 'الرسائل'],
   ['settings', '/admin/settings', 'الإعدادات'],
   ['seo', '/admin/seo', 'جوجل', ' والمشاركة'],
 ];
@@ -22,7 +26,10 @@ const saved = Astro.url.searchParams.get('saved');
   <meta name="robots" content="noindex, nofollow">
   {refresh > 0 && <meta http-equiv="refresh" content={String(refresh)}>}
   <title>{title} | إدارة بن السعودي</title>
-  <link rel="icon" type="image/png" href="/media/logo-sm.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/media/favicon-192.png">
+  <link rel="apple-touch-icon" href="/media/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -36,6 +43,7 @@ const saved = Astro.url.searchParams.get('saved');
         <a href={href} aria-current={id === active ? 'page' : undefined}>
           {label}{more && <span class="hide-sm">{more}</span>}
           {id === 'orders' && newCount > 0 && <span class="badge badge--new">{newCount}</span>}
+          {id === 'messages' && newMessages > 0 && <span class="badge badge--new">{newMessages}</span>}
         </a>
       ))}
     </nav>

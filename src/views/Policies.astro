@@ -3,18 +3,17 @@
 // DRAFT text for the owner to review before launch. Fees, areas and contact details come from admin settings.
 import Base from '../layouts/Base.astro';
 import { t, href } from '../lib/i18n.js';
-import { getSettings } from '../lib/db.js';
+import { getSettings, getBranches, loc } from '../lib/db.js';
 import { egp } from '../lib/money.js';
 
 const { lang } = Astro.props;
 const tr = (k) => t(lang, k);
-const s = await getSettings();
+const [s, branches] = await Promise.all([getSettings(), getBranches()]);
 const ar = lang === 'ar';
 
 const fee = s.deliveryFee ? egp(s.deliveryFee, lang) : (ar ? 'مجاني' : 'free');
 const freeOver = s.freeDeliveryOver ? egp(s.freeDeliveryOver, lang) : '';
 const area = s[`delivery_area_${lang}`] || s.delivery_area_ar;
-const address = s[`address_${lang}`] || s.address_ar;
 const hours = s[`hours_${lang}`] || s.hours_ar;
 
 const sections = ar ? [
@@ -36,14 +35,14 @@ const sections = ar ? [
     'الفلوس المدفوعة أونلاين بترجع على نفس طريقة الدفع عن طريق Paymob، والمدة بتعتمد على البنك أو المحفظة.',
   ]],
   ['delivery', 'التوصيل والاستلام', [
-    s.pickup ? 'تقدر تستلم طلبك من المحل، وهنكلمك أول ما يبقى جاهز.' : '',
+    s.pickup ? `تقدر تستلم طلبك من ${branches.length > 1 ? 'أي فرع من فروعنا (بتختاره وانت بتطلب)' : 'المحل'}، وهنكلمك أول ما يبقى جاهز.` : '',
     s.delivery ? `مصاريف التوصيل ${fee}${freeOver ? `، والتوصيل مجاني للطلبات من ${freeOver}` : ''}.${area ? ` بنوصّل في: ${area}.` : ''}` : '',
     s.delivery ? 'بنتفق معاك على معاد التوصيل لما نكلمك لتأكيد الطلب. لو اخترت الدفع عند الاستلام، بتدفع للمندوب أو في المحل.' : '',
   ]],
   ['contact', 'تواصل معانا', [
     s.shop_phone ? `تليفون: ${s.shop_phone}` : '',
     s.shop_whatsapp ? `واتساب: +${s.shop_whatsapp}` : '',
-    address ? `العنوان: ${address}` : '',
+    ...branches.map((b) => `${b.name_ar}: ${b.address_ar}`),
     hours ? `مواعيد العمل: ${hours}` : '',
   ]],
 ] : [
@@ -65,14 +64,14 @@ const sections = ar ? [
     'Online payments are refunded to the same payment method through Paymob; timing depends on your bank or wallet.',
   ]],
   ['delivery', 'Delivery and pickup', [
-    s.pickup ? 'You can pick up your order at the shop; we will call you as soon as it is ready.' : '',
+    s.pickup ? `You can pick up your order at ${branches.length > 1 ? 'any of our branches (you choose it when ordering)' : 'the shop'}; we will call you as soon as it is ready.` : '',
     s.delivery ? `Delivery costs ${fee}${freeOver ? `, and is free on orders from ${freeOver}` : ''}.${area ? ` We deliver to: ${area}.` : ''}` : '',
     s.delivery ? 'We agree the delivery time with you when we call to confirm the order. With cash on delivery, you pay the courier or at the shop.' : '',
   ]],
   ['contact', 'Contact us', [
     s.shop_phone ? `Phone: ${s.shop_phone}` : '',
     s.shop_whatsapp ? `WhatsApp: +${s.shop_whatsapp}` : '',
-    address ? `Address: ${address}` : '',
+    ...branches.map((b) => `${loc(b, 'name', 'en')}: ${loc(b, 'address', 'en')}`),
     hours ? `Opening hours: ${hours}` : '',
   ]],
 ];
