@@ -10,8 +10,9 @@ import { egp } from './money.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+// lower case: Resend matches an account's own address case-sensitively, and email addresses don't care
 export function orderEmailList(value) {
-  return String(value || '').split(/[\s,;]+/).filter((a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a));
+  return String(value || '').toLowerCase().split(/[\s,;]+/).filter((a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a));
 }
 
 function compose(order, origin) {
