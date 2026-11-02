@@ -1,40 +1,85 @@
-// New order alert for the owner.
-// Uses Cloudflare Email Routing (a "send_email" binding named ORDER_MAIL) once the shop's domain is on Cloudflare.
-// Until then this does nothing; new orders still show with a badge in the admin panel.
+// New order alert for the owner, sent to every address in the "order_email" setting (comma separated).
+// Sent through Resend (secret RESEND_API_KEY). Without a verified domain, Resend only delivers to the
+// address the Resend account was opened with; the other addresses start working once the shop's domain is
+// verified there (then set ORDER_MAIL_FROM to an address on that domain).
+// Alternative: Cloudflare Email Routing (a "send_email" binding named ORDER_MAIL plus ORDER_MAIL_FROM).
+// If neither is set this does nothing; new orders still show with a badge in the admin panel.
 import { env } from 'cloudflare:workers';
 import { getSettings } from './db.js';
 import { egp } from './money.js';
 
-export async function notifyNewOrder(order) {
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+export function orderEmailList(value) {
+  return String(value || '').split(/[\s,;]+/).filter((a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a));
+}
+
+function compose(order, origin) {
+  const where = order.fulfilment === 'delivery'
+    ? `توصيل إلى: ${order.address}`
+    : `استلام من المحل${order.branch_name_ar ? `: ${order.branch_name_ar}` : ''}`;
+  const pay = order.payment_method === 'cod' ? 'كاش عند الاستلام' : 'أونلاين (مستني الدفع)';
+  const items = order.items.map((i) => `${i.qty} × ${i.name} (${i.details}) ${i.size} جم = ${egp(i.line_total, 'ar')}`);
+  const extras = [
+    ...(order.discount ? [`خصم (${order.promo_code}): ${egp(order.discount, 'ar')}`] : []),
+    ...(order.welcome ? ['توصيل مجاني: أول طلب توصيل'] : order.delivery_waived ? [`توصيل مجاني بكود ${order.promo_code}`] : []),
+    ...(order.fulfilment === 'delivery' && order.delivery_fee && !order.welcome && !order.delivery_waived ? [`التوصيل: ${egp(order.delivery_fee, 'ar')}`] : []),
+  ];
+  const link = origin ? `${origin}/admin/orders/${order.id}` : '';
+  const head = [`طلب جديد ${order.code}`, `${order.name}  ${order.phone}`, where, `الدفع: ${pay}`];
+
+  const text = [
+    ...head, '', ...items, '', ...extras, `الإجمالي: ${egp(order.total, 'ar')}`,
+    ...(order.notes ? [`ملاحظات: ${order.notes}`] : []),
+    ...(link ? ['', `افتح الطلب: ${link}`] : []),
+  ].join('\n');
+
+  const row = (s) => `<p style="margin:.2em 0">${esc(s)}</p>`;
+  const html = `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.6;color:#2b1a10">
+<h2 style="margin:0 0 .4em;color:#a8541c">طلب جديد ${esc(order.code)}</h2>
+${row(`${order.name}  `)}<p style="margin:.2em 0" dir="ltr" align="right"><a href="tel:${esc(order.phone)}">${esc(order.phone)}</a></p>
+${row(where)}${row(`الدفع: ${pay}`)}
+<hr style="border:0;border-top:1px solid #e5d6c0">
+${items.map(row).join('')}
+<hr style="border:0;border-top:1px solid #e5d6c0">
+${extras.map(row).join('')}<p style="margin:.2em 0;font-weight:bold">الإجمالي: ${esc(egp(order.total, 'ar'))}</p>
+${order.notes ? row(`ملاحظات: ${order.notes}`) : ''}
+${link ? `<p style="margin:1em 0 0"><a href="${esc(link)}" style="background:#a8541c;color:#fff;padding:.5em 1.2em;border-radius:6px;text-decoration:none">افتح الطلب</a></p>` : ''}
+</div>`;
+
+  return { subject: `طلب جديد ${order.code}: ${egp(order.total, 'ar')}`, text, html };
+}
+
+async function sendResend(to, mail) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: `El Soody Store <${env.ORDER_MAIL_FROM || 'onboarding@resend.dev'}>`, to: [to], ...mail }),
+  });
+  if (!res.ok) console.error('order email failed', to, res.status, await res.text());
+}
+
+async function sendCloudflare(to, mail) {
+  const { EmailMessage } = await import('cloudflare:email');
+  const raw = [
+    `From: El Soody Store <${env.ORDER_MAIL_FROM}>`,
+    `To: ${to}`,
+    `Subject: =?UTF-8?B?${btoa(String.fromCharCode(...new TextEncoder().encode(mail.subject)))}?=`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    mail.text,
+  ].join('\r\n');
+  await env.ORDER_MAIL.send(new EmailMessage(env.ORDER_MAIL_FROM, to, raw));
+}
+
+export async function notifyNewOrder(order, origin) {
   try {
-    const settings = await getSettings();
-    if (!env.ORDER_MAIL || !settings.order_email || !env.ORDER_MAIL_FROM) return;
-
-    const lines = order.items.map((i) => `${i.qty} × ${i.name} (${i.details}) ${i.size} g = ${egp(i.line_total, 'en')}`);
-    const text = [
-      `New order ${order.code}`,
-      `${order.name}  ${order.phone}`,
-      order.fulfilment === 'delivery' ? `Delivery to: ${order.address}` : `Pickup at the shop${order.branch_name_en ? `: ${order.branch_name_en} (${order.branch_name_ar})` : ''}`,
-      `Payment: ${order.payment_method === 'cod' ? 'cash on delivery' : 'online'}`,
-      '',
-      ...lines,
-      '',
-      ...(order.discount ? [`Discount (${order.promo_code}): ${egp(order.discount, 'en')}`] : []),
-      ...(order.welcome ? ['Free delivery: first delivery order'] : order.delivery_waived ? [`Free delivery with code ${order.promo_code}`] : []),
-      `Total: ${egp(order.total, 'en')}`,
-      order.notes ? `Notes: ${order.notes}` : '',
-    ].join('\n');
-
-    const { EmailMessage } = await import('cloudflare:email');
-    const raw = [
-      `From: El Soody Store <${env.ORDER_MAIL_FROM}>`,
-      `To: ${settings.order_email}`,
-      `Subject: New order ${order.code}`,
-      'Content-Type: text/plain; charset=utf-8',
-      '',
-      text,
-    ].join('\r\n');
-    await env.ORDER_MAIL.send(new EmailMessage(env.ORDER_MAIL_FROM, settings.order_email, raw));
+    const to = orderEmailList((await getSettings()).order_email);
+    const send = env.RESEND_API_KEY ? sendResend : env.ORDER_MAIL && env.ORDER_MAIL_FROM ? sendCloudflare : null;
+    if (!send || !to.length) return;
+    const mail = compose(order, origin);
+    // one email per address, so an address the sender can't reach yet doesn't block the others
+    await Promise.all(to.map((a) => send(a, mail).catch((e) => console.error('order email failed', a, e))));
   } catch (e) {
     console.error('order email failed', e);
   }

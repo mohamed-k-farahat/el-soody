@@ -5,6 +5,7 @@ import { DB, getSettings, setSettings, getGrinds } from '../../lib/db.js';
 import { toPiasters } from '../../lib/money.js';
 import { paymobReady, paymobMode } from '../../lib/paymob.js';
 import { str, flag } from '../../lib/admin.js';
+import { orderEmailList } from '../../lib/notify.js';
 import { storedHash, verifyPassword, hashPassword, setPasswordHash, makeSessionCookie } from '../../lib/auth.js';
 
 const errors = [];
@@ -42,7 +43,7 @@ if (form && form.get('action') === 'password') {
     shop_whatsapp: str(form, 'shop_whatsapp', 20).replace(/\D/g, ''),
     hours_ar: str(form, 'hours_ar', 200), hours_en: str(form, 'hours_en', 200),
     instagram: str(form, 'instagram', 300), facebook: str(form, 'facebook', 300), tiktok: str(form, 'tiktok', 300),
-    order_email: str(form, 'order_email', 120),
+    order_email: orderEmailList(str(form, 'order_email', 300)).join(', '),
     spice_addon_enabled: flag(form, 'spice_addon_enabled'),
     spice_addon_prices: [1, 2, 3].map((n) => toPiasters(form.get(`spice_${n}`))).filter((n) => Number.isInteger(n) && n > 0).join(','),
   };
@@ -110,7 +111,7 @@ const ready = paymobReady();
         <label class="f">رقم الواتساب بكود الدولة (مثلا 201001234567)<input type="tel" name="shop_whatsapp" value={s.shop_whatsapp} dir="ltr"></label>
         <label class="f">مواعيد العمل بالعربي<input type="text" name="hours_ar" value={s.hours_ar} placeholder="مثلا: كل يوم من ٩ الصبح لـ ١٢ بالليل"></label>
         <label class="f">Opening hours in English<input type="text" name="hours_en" value={s.hours_en} dir="ltr"></label>
-        <label class="f">إيميل يوصله إشعار بكل طلب جديد<input type="email" name="order_email" value={s.order_email} dir="ltr"><span class="hint">بيشتغل بعد ربط دومين المحل.</span></label>
+        <label class="f">إيميلات يوصلها إشعار بكل طلب جديد<input type="email" multiple name="order_email" value={s.order_email} dir="ltr"><span class="hint">أكتر من إيميل؟ افصل بينهم بفاصلة. لحد ما دومين المحل يتربط، الإشعار بيوصل بس للإيميل اللي اتفتح بيه حساب الإرسال.</span></label>
         <label class="f">Instagram<input type="url" name="instagram" value={s.instagram} dir="ltr"></label>
         <label class="f">Facebook<input type="url" name="facebook" value={s.facebook} dir="ltr"></label>
         <label class="f">TikTok<input type="url" name="tiktok" value={s.tiktok} dir="ltr"></label>

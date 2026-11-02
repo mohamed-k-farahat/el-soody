@@ -22,7 +22,7 @@ export async function POST({ request, locals, cookies, url }) {
   }
 
   const { order } = result;
-  locals.cfContext?.waitUntil?.(notifyNewOrder(order));
+  locals.cfContext?.waitUntil?.(notifyNewOrder(order, new URL(request.url).origin));
 
   if (order.payment_method === 'online') {
     const pay = await startPayment(order, new URL(request.url).origin);
