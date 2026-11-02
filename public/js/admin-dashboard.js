@@ -22,13 +22,14 @@
   const tip = document.getElementById('tip');
   if (!tip) return;
   const [title, body] = tip.children;
-  let current = null;
+  let current = null, below = false, hideTimer = 0;
   function place(x, y) {
     const w = tip.offsetWidth, h = tip.offsetHeight;
     tip.style.left = `${Math.min(Math.max(8, x - w / 2), innerWidth - w - 8)}px`;
-    tip.style.top = `${y - h - 14 < 8 ? y + 18 : y - h - 14}px`;
+    tip.style.top = `${below ? y + 18 : y - h - 14}px`;
   }
   function show(el, x, y) {
+    clearTimeout(hideTimer); hideTimer = 0;
     if (current !== el) {
       current?.classList.remove('is-hover');
       current = el;
@@ -36,17 +37,23 @@
       title.textContent = el.dataset.tipTitle || '';
       body.textContent = el.dataset.tip || '';
       tip.hidden = false;
+      // above the pointer, or below when there's no room; decided once per mark so it doesn't flip while moving
+      below = y - tip.offsetHeight - 14 < 8;
     }
     place(x, y);
   }
-  function hide() { current?.classList.remove('is-hover'); current = null; tip.hidden = true; }
+  function hide() { clearTimeout(hideTimer); hideTimer = 0; current?.classList.remove('is-hover'); current = null; tip.hidden = true; }
   document.addEventListener('pointermove', (e) => {
     const el = e.target.closest?.('[data-tip]');
-    if (el) show(el, e.clientX, e.clientY); else if (current) hide();
+    if (el) show(el, e.clientX, e.clientY);
+    // the thin gaps between squares and rows don't count as leaving: wait a moment before hiding
+    else if (current && !hideTimer) hideTimer = setTimeout(() => { hideTimer = 0; hide(); }, 150);
   });
+  document.documentElement.addEventListener('pointerleave', hide); // the mouse left the window
+  // keyboard focus shows the details too (a mouse click focuses as well, but then the pointer leads)
   document.addEventListener('focusin', (e) => {
     const el = e.target.closest?.('[data-tip]');
-    if (!el) return hide();
+    if (!el || !el.matches(':focus-visible')) return;
     const r = el.getBoundingClientRect();
     show(el, r.left + r.width / 2, r.top);
   });
