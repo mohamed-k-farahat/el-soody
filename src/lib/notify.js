@@ -1,5 +1,5 @@
 // New order alert for the owner, sent to every address in the "order_email" setting (comma separated).
-// Sent through Resend (secret RESEND_API_KEY). Without a verified domain, Resend only delivers to the
+// Sent through Resend (secret RESEND_API_KEY, optionally RESEND_API_KEY_2). Without a verified domain, Resend only delivers to the
 // address the Resend account was opened with; the other addresses start working once the shop's domain is
 // verified there (then set ORDER_MAIL_FROM to an address on that domain).
 // Alternative: Cloudflare Email Routing (a "send_email" binding named ORDER_MAIL plus ORDER_MAIL_FROM).
@@ -50,13 +50,21 @@ ${link ? `<p style="margin:1em 0 0"><a href="${esc(link)}" style="background:#a8
   return { subject: `طلب جديد ${order.code}: ${egp(order.total, 'ar')}`, text, html };
 }
 
+// Without a domain each Resend account only delivers to its own address, so with one account per address
+// (RESEND_API_KEY, RESEND_API_KEY_2) an address one account refuses (403) is tried with the next.
 async function sendResend(to, mail) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: `El Soody Store <${env.ORDER_MAIL_FROM || 'onboarding@resend.dev'}>`, to: [to], ...mail }),
-  });
-  if (!res.ok) console.error('order email failed', to, res.status, await res.text());
+  const keys = [env.RESEND_API_KEY, env.RESEND_API_KEY_2].filter(Boolean);
+  for (const [n, key] of keys.entries()) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: `El Soody Store <${env.ORDER_MAIL_FROM || 'onboarding@resend.dev'}>`, to: [to], ...mail }),
+    });
+    if (res.ok) return;
+    if (res.status === 403 && n < keys.length - 1) continue;
+    console.error('order email failed', to, res.status, await res.text());
+    return;
+  }
 }
 
 async function sendCloudflare(to, mail) {
