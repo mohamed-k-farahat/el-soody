@@ -4,7 +4,6 @@
 import { DB } from './db.js';
 import { normalizeCode } from './offers.js';
 import { t } from './i18n.js';
-import { STATUS_AR } from './admin.js';
 
 const DAY = 86400000;
 
@@ -88,7 +87,7 @@ export async function readFilters(sp) {
     DB().prepare('SELECT id, name_ar, kind FROM products ORDER BY kind, sort, id'),
     DB().prepare('SELECT id, name_ar FROM grinds ORDER BY sort, id'),
     DB().prepare("SELECT DISTINCT promo_code AS code FROM orders WHERE promo_code != '' ORDER BY code"),
-    DB().prepare('SELECT MIN(created_at) AS t FROM orders'),
+    DB().prepare('SELECT MIN(created_at) AS t FROM orders WHERE test = 0'),
   ]);
   const opts = { branches: branches.results, products: products.results, grinds: grinds.results, promos: promos.results.map((r) => r.code) };
   const int = (k, list) => { const n = Number(sp.get(k)); return list.some((x) => x.id === n) ? n : null; };
@@ -144,7 +143,7 @@ function lineConds(f, skip) {
   return c;
 }
 function orderConds(f, skip, withLines = true) {
-  const c = [];
+  const c = ['o.test = 0']; // orders marked as tests never count
   if (skip !== 'status') c.push(`(${SCOPES[f.status].sql})`);
   if (f.fulfilment && skip !== 'fulfilment') c.push(`o.fulfilment = ${q(f.fulfilment)}`);
   if (f.payment && skip !== 'payment') c.push(`o.payment_method = ${q(f.payment)}`);
@@ -194,7 +193,7 @@ export async function loadDashboard(sp) {
              FROM orders o WHERE ${both} AND ${and(orderConds(f, 'status'))} GROUP BY p`,
     // customers whose first (not cancelled) order ever falls in the period
     fresh: `SELECT CASE WHEN x.first >= ${q(r.start)} THEN 'cur' ELSE 'prev' END AS p, COUNT(*) AS n
-            FROM (SELECT phone, MIN(created_at) AS first FROM orders WHERE status != 'cancelled' GROUP BY phone) x
+            FROM (SELECT phone, MIN(created_at) AS first FROM orders WHERE status != 'cancelled' AND test = 0 GROUP BY phone) x
             WHERE x.first >= ${q(r.prevStart)} AND x.first < ${q(r.end)}
               AND x.phone IN (SELECT o.phone FROM orders o WHERE ${both} AND ${and(orderConds(f))}) GROUP BY p`,
     repeat: `SELECT COUNT(*) AS n FROM (SELECT o.phone FROM orders o WHERE ${cur} AND ${and(orderConds(f))} GROUP BY o.phone HAVING COUNT(*) > 1)`,
@@ -203,7 +202,6 @@ export async function loadDashboard(sp) {
     fulfilment: byOrder('o.fulfilment', 'fulfilment'),
     payment: byOrder('o.payment_method', 'payment'),
     branch: byOrder('o.branch_id', 'branch', ["o.fulfilment = 'pickup'"]),
-    status: byOrder('o.status', 'status'),
     promo: byOrder("CASE WHEN o.promo_code != '' THEN o.promo_code WHEN o.welcome = 1 THEN '*welcome' ELSE '' END", 'promo'),
     product: byLine('oi.product_id', 'product'),
     section: byLine('oi.section', 'section'),
@@ -247,7 +245,6 @@ export async function loadDashboard(sp) {
     fulfilment: (k) => FULFILMENT[k] || k,
     payment: (k) => PAYMENT[k] || k,
     branch: (k) => opts.branches.find((b) => b.id === k)?.name_ar || 'فرع مش محدد',
-    status: (k) => STATUS_AR[k] || k,
     promo: (k) => (k === '' ? 'من غير كود' : k === '*welcome' ? 'توصيل مجاني لأول طلب' : k),
     product: (k) => opts.products.find((p) => p.id === k)?.name_ar || 'منتج اتمسح',
     section: (k) => (k ? t('ar', `section.${k}`) : 'مش محدد'),

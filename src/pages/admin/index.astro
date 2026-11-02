@@ -18,7 +18,7 @@ const q = (Astro.url.searchParams.get('q') || '').trim().slice(0, 40);
 const counts = Object.fromEntries(await Promise.all(Object.entries(TABS).map(async ([k, v]) =>
   [k, (await DB().prepare(`SELECT count(*) AS n FROM orders WHERE ${v.where}`).first()).n])));
 
-let sql = `SELECT id, code, created_at, status, fulfilment, payment_method, payment_status, name, phone, total, seen FROM orders WHERE ${TABS[tab].where}`;
+let sql = `SELECT id, code, created_at, status, fulfilment, payment_method, payment_status, name, phone, total, seen, test FROM orders WHERE ${TABS[tab].where}`;
 const binds = [];
 if (q) { sql += ' AND (code LIKE ? OR phone LIKE ? OR name LIKE ?)'; binds.push(`%${q}%`, `%${q}%`, `%${q}%`); }
 sql += ' ORDER BY id DESC LIMIT 200';
@@ -48,7 +48,7 @@ const { results: orders } = await DB().prepare(sql).bind(...binds).all();
         <tbody>
           {orders.map((o) => (
             <tr class={o.seen ? '' : 'unseen'}>
-              <td class="lead"><a class="rowlink" href={`/admin/orders/${o.id}`} dir="ltr">{o.code}</a> <span class={`st st--${o.status} show-sm`}>{STATUS_AR[o.status]}</span></td>
+              <td class="lead"><a class="rowlink" href={`/admin/orders/${o.id}`} dir="ltr">{o.code}</a>{o.test ? <span class="st st--test">تجربة</span> : ''} <span class={`st st--${o.status} show-sm`}>{STATUS_AR[o.status]}</span></td>
               <td data-label="الوقت">{cairoTime(o.created_at)}</td>
               <td data-label="العميل"><div>{o.name}<br><span class="hint" dir="ltr">{o.phone}</span></div></td>
               <td data-label="الاستلام">{o.fulfilment === 'delivery' ? 'توصيل' : 'من المحل'}</td>

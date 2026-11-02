@@ -86,6 +86,7 @@ table.t { width: 100%; border-collapse: collapse; }
 .badge--new { background: #FD9A19; color: #1B120C; margin-inline-start: .3rem; }
 .st { display: inline-block; padding: .12rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
 .st--new { background: #FD9A19; color: #1B120C; }
+.st--test { background: none; border: 1px dashed var(--muted); color: var(--muted); margin-inline-start: .4rem; }
 .st--confirmed, .st--preparing { background: #E4EDFB; color: var(--blue); }
 .st--ready, .st--out { background: #FFF1D6; color: #8A5300; }
 .st--completed, .st--paid { background: #E3F4EA; color: var(--green); }
@@ -134,7 +135,7 @@ details.box summary { cursor: pointer; font-weight: 700; }
 
   /* 16px text in fields: iPhones zoom the page in when a field with smaller text is tapped */
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea,
-  .dfilters form select, .dfilters form input { font-size: 16px; }
+  .dfilters .dfilters__row select, .dfilters .dfilters__row input { font-size: 16px; }
   /* bigger tap targets */
   .check input, input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
   .check { min-height: 40px; }
@@ -226,8 +227,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--orange); }
 /* ---------- dashboard (الإحصائيات) ---------- */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 body.is-loading .amain > :not(.dfilters) { opacity: .55; transition: opacity .2s; }
-.dfilters summary { cursor: pointer; font-weight: 700; }
-.dfilters form { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .6rem .8rem; margin-top: .8rem; }
+.dfilters__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .6rem .8rem; }
+.dmore summary { cursor: pointer; font-weight: 700; color: var(--orange); font-size: .9rem; margin-top: .7rem; }
+.dmore .dfilters__row { margin-top: .6rem; }
+.dmore--lists { margin-bottom: 1rem; }
+.dmore--lists summary { margin: 0 0 .8rem; }
 .dfilters label { display: grid; gap: .2rem; font-size: .82rem; font-weight: 600; color: var(--muted); }
 .dfilters select, .dfilters input { padding: .4rem .55rem; font-size: .92rem; color: var(--ink); }
 .dhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin: .2rem 0 .8rem; }
@@ -307,7 +311,7 @@ body.is-loading .amain > :not(.dfilters) { opacity: .55; transition: opacity .2s
   .kpi { padding: .7rem .8rem; }
   .kpi__value { font-size: 1.25rem; }
   .colchart { grid-template-rows: 180px auto; grid-template-columns: 2.6rem 1fr; }
-  .dfilters form { grid-template-columns: 1fr 1fr; }
+  .dfilters__row { grid-template-columns: 1fr 1fr; }
   .bars li > a, .bars li > div { grid-template-columns: 1fr auto; gap: .2rem .6rem; }
   .bars__track { grid-column: 1 / -1; grid-row: 2; }
   .colchart__x span.alt { visibility: hidden; }

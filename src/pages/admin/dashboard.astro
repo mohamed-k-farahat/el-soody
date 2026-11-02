@@ -26,30 +26,32 @@ const periodText = (a, b) => (a === b ? longFmt.format(Date.parse(a))
   : `من ${(a.slice(0, 4) === b.slice(0, 4) ? dayFmt : yearFmt).format(Date.parse(a))} لحد ${yearFmt.format(Date.parse(b))}`);
 
 // ---------- headline tiles ----------
-function delta(cur, prev, { invert = false, points = false } = {}) {
+// fmt formats the plain difference, shown instead of a percentage when the previous number was so small that
+// the percentage would look alarming (e.g. 10 ج.م of discounts last week and 230 this week is "+2,200%")
+function delta(cur, prev, { invert = false, points = false, fmt = (v) => num.format(v) } = {}) {
   if (!prev && !cur) return { text: 'زي الفترة اللي قبلها', cls: '' };
   if (!prev) return { text: 'الفترة اللي قبلها كانت صفر', cls: '' };
   const change = points ? (cur - prev) * 100 : ((cur - prev) / prev) * 100;
   if (Math.abs(change) < 0.5) return { text: 'زي الفترة اللي قبلها', cls: '' };
   const up = change > 0;
-  return {
-    text: `${up ? '▲' : '▼'} ${num.format(Math.abs(change))}${points ? ' نقطة' : '%'} عن الفترة اللي قبلها`,
-    cls: up !== invert ? 'up' : 'down',
-  };
+  const amount = points ? `${num.format(Math.abs(change))} نقطة` : Math.abs(change) >= 200 ? fmt(Math.abs(cur - prev)) : `${num.format(Math.abs(change))}%`;
+  return { text: `${up ? '▲' : '▼'} ${amount} عن الفترة اللي قبلها`, cls: up !== invert ? 'up' : 'down' };
 }
 const c = kpi.cur, p = kpi.prev;
 const avg = (x) => (x.orders ? x.rev / x.orders : 0);
 const rate = (x) => (x.placed ? x.cancelled / x.placed : 0);
 const lineOnly = lineFilterActive(f);
+const count = (unit) => (v) => `${num.format(v)} ${unit}`;
+// money first: discounts sit right under sales
 const tiles = [
-  { label: lineOnly ? 'مبيعات الأصناف المختارة' : 'المبيعات', value: money(c.rev), d: delta(c.rev, p.rev) },
-  { label: 'الطلبات', value: num.format(c.orders || 0), d: delta(c.orders, p.orders) },
-  { label: 'متوسط الطلب', value: money(avg(c)), d: delta(avg(c), avg(p)) },
-  { label: lineOnly ? 'كمية الأصناف المختارة' : 'البن والمنتجات المباعة', value: kg(c.grams), d: delta(c.grams, p.grams) },
-  { label: 'العملاء', value: num.format(c.customers || 0), d: delta(c.customers, p.customers), sub: `${num.format(kpi.repeat)} منهم طلبوا أكتر من مرة` },
-  { label: 'عملاء جداد', value: num.format(kpi.freshCur), d: delta(kpi.freshCur, kpi.freshPrev), sub: 'أول طلب ليهم من الموقع' },
+  { label: lineOnly ? 'مبيعات الأصناف المختارة' : 'المبيعات', value: money(c.rev), d: delta(c.rev, p.rev, { fmt: money }) },
+  { label: 'الطلبات', value: num.format(c.orders || 0), d: delta(c.orders, p.orders, { fmt: count('طلب') }) },
+  { label: 'متوسط الطلب', value: money(avg(c)), d: delta(avg(c), avg(p), { fmt: money }) },
+  { label: lineOnly ? 'كمية الأصناف المختارة' : 'البن والمنتجات المباعة', value: kg(c.grams), d: delta(c.grams, p.grams, { fmt: kg }) },
+  { label: 'الخصومات', value: money(c.discount), d: delta(c.discount, p.discount, { invert: true, fmt: money }), sub: `${num.format(c.welcome || 0)} طلب أخد توصيل مجاني لأول مرة` },
+  { label: 'العملاء', value: num.format(c.customers || 0), d: delta(c.customers, p.customers, { fmt: count('عميل') }), sub: `${num.format(kpi.repeat)} منهم طلبوا أكتر من مرة` },
+  { label: 'عملاء جداد', value: num.format(kpi.freshCur), d: delta(kpi.freshCur, kpi.freshPrev, { fmt: count('عميل') }), sub: 'أول طلب ليهم من الموقع' },
   { label: 'نسبة الإلغاء', value: `${num.format(rate(kpi.cancelCur) * 100)}%`, d: delta(rate(kpi.cancelCur), rate(kpi.cancelPrev), { invert: true, points: true }), sub: `${num.format(kpi.cancelCur.cancelled || 0)} من ${num.format(kpi.cancelCur.placed || 0)} طلب` },
-  { label: 'الخصومات', value: money(c.discount), d: delta(c.discount, p.discount, { invert: true }), sub: `${num.format(c.welcome || 0)} طلب أخد توصيل مجاني لأول مرة` },
 ];
 
 // ---------- sales over time ----------
@@ -100,15 +102,16 @@ const sections = [
   { title: 'المنتجات', rows: bars('product', 'product'), wide: true },
   { title: 'سادة ولا محوّج', rows: bars('section', 'section', (row) => row.k || null) },
   { title: 'الوزن', rows: bars('size', 'size') },
-  { title: 'الطحنة', rows: bars('grind', 'grind', (row) => row.k || null) },
-  { title: 'التحميص', rows: bars('roast', 'roast', (row) => row.k || null) },
-  { title: 'إضافة التحويجة', rows: bars('spice', null), note: 'على البن السادة بس' },
   { title: 'الاستلام', rows: bars('fulfilment', 'fulfilment') },
   { title: 'فرع الاستلام', rows: bars('branch', 'branch', (row) => row.k || null) },
   { title: 'طريقة الدفع', rows: bars('payment', 'payment') },
   { title: 'أكواد الخصم', rows: bars('promo', 'promo', (row) => (row.k === '' ? 'none' : row.k === '*welcome' ? 'welcome' : row.k)), discount: true },
-  { title: 'حالة الطلبات', rows: bars('status', null), note: 'كل الحالات، حتى لو فلتر الطلبات مختار' },
+  // less often needed: folded under "تفاصيل أكتر"
+  { title: 'الطحنة', rows: bars('grind', 'grind', (row) => row.k || null), more: true },
+  { title: 'التحميص', rows: bars('roast', 'roast', (row) => row.k || null), more: true },
+  { title: 'إضافة التحويجة', rows: bars('spice', null), note: 'على البن السادة بس', more: true, wide: true },
 ];
+const groups = [sections.filter((s) => !s.more), sections.filter((s) => s.more)];
 
 // ---------- active filter chips ----------
 const nameOf = (list, id) => list.find((x) => x.id === id)?.name_ar;
@@ -124,6 +127,7 @@ const chips = [
   f.roast && { label: `تحميص ${t('ar', `roast.${f.roast}`)}`, href: link({ roast: null }) },
   f.promo && { label: f.promo === 'any' ? 'بكود خصم' : f.promo === 'none' ? 'من غير كود' : f.promo === 'welcome' ? 'توصيل مجاني لأول طلب' : `كود ${f.promo}`, href: link({ promo: null }) },
 ].filter(Boolean);
+const moreCount = chips.length - (f.status !== 'valid' ? 1 : 0);
 const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch: null, product: null, section: null, size: null, grind: null, roast: null, promo: null });
 ---
 <Admin title="الإحصائيات" active="dashboard">
@@ -132,45 +136,49 @@ const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch
     <a class="btn btn--small" href={`/admin/dashboard.csv${filterQuery(f)}`} download>تنزيل الطلبات (Excel)</a>
   </div>
 
-  <details class="dfilters card" open>
-    <summary>الفلاتر {chips.length > 0 && <span class="badge">{chips.length}</span>}</summary>
-    <form method="get" action="/admin/dashboard" id="dfilters">
-      <label>الفترة
+  <!-- the filters people use every day; the rest fold under "فلاتر أكتر" (clicking a row in a breakdown below does the same) -->
+  <form class="dfilters card" method="get" action="/admin/dashboard" id="dfilters">
+    <div class="dfilters__row">
+        <label>الفترة
         <select name="range">{Object.entries(PRESETS).map(([k, v]) => <option value={k} selected={f.range === k}>{v}</option>)}</select>
       </label>
-      <label class="dcustom" hidden={f.range !== 'custom'}>من<input type="date" name="from" value={r.a} max={d.today}></label>
-      <label class="dcustom" hidden={f.range !== 'custom'}>لحد<input type="date" name="to" value={r.b} max={d.today}></label>
-      <label>اعرض الأرقام بـ
+        <label class="dcustom" hidden={f.range !== 'custom'}>من<input type="date" name="from" value={r.a} max={d.today}></label>
+        <label class="dcustom" hidden={f.range !== 'custom'}>لحد<input type="date" name="to" value={r.b} max={d.today}></label>
+        <label>اعرض الأرقام بـ
         <select name="m">{Object.entries(MEASURES).map(([k, v]) => <option value={k} selected={f.m === k}>{v}</option>)}</select>
       </label>
-      <label>الطلبات
+        <label>الطلبات
         <select name="status">{Object.entries(SCOPES).map(([k, v]) => <option value={k} selected={f.status === k}>{v.label}</option>)}</select>
       </label>
-      <label>الاستلام
+    </div>
+    <details class="dmore" open={moreCount > 0}>
+      <summary>فلاتر أكتر {moreCount > 0 && <span class="badge">{moreCount}</span>}</summary>
+      <div class="dfilters__row">
+          <label>الاستلام
         <select name="fulfilment"><option value="">الكل</option>{Object.entries(FULFILMENT).map(([k, v]) => <option value={k} selected={f.fulfilment === k}>{v}</option>)}</select>
       </label>
-      <label>فرع الاستلام
+          <label>فرع الاستلام
         <select name="branch"><option value="">كل الفروع</option>{opts.branches.map((b) => <option value={b.id} selected={f.branch === b.id}>{b.name_ar}</option>)}</select>
       </label>
-      <label>الدفع
+          <label>الدفع
         <select name="payment"><option value="">الكل</option>{Object.entries(PAYMENT).map(([k, v]) => <option value={k} selected={f.payment === k}>{v}</option>)}</select>
       </label>
-      <label>المنتج
+          <label>المنتج
         <select name="product"><option value="">كل المنتجات</option>{opts.products.map((x) => <option value={x.id} selected={f.product === x.id}>{x.name_ar}</option>)}</select>
       </label>
-      <label>سادة ولا محوّج
+          <label>سادة ولا محوّج
         <select name="section"><option value="">الكل</option>{SECTIONS.map((k) => <option value={k} selected={f.section === k}>{t('ar', `section.${k}`)}</option>)}</select>
       </label>
-      <label>الوزن
+          <label>الوزن
         <select name="size"><option value="">كل الأوزان</option>{Object.entries(SIZES).map(([k, v]) => <option value={k} selected={String(f.size) === k}>{v}</option>)}</select>
       </label>
-      <label>الطحنة
+          <label>الطحنة
         <select name="grind"><option value="">الكل</option>{opts.grinds.map((x) => <option value={x.id} selected={f.grind === x.id}>{x.name_ar}</option>)}</select>
       </label>
-      <label>التحميص
+          <label>التحميص
         <select name="roast"><option value="">الكل</option>{ROASTS.map((k) => <option value={k} selected={f.roast === k}>{t('ar', `roast.${k}`)}</option>)}</select>
       </label>
-      <label>كود الخصم
+          <label>كود الخصم
         <select name="promo">
           <option value="">الكل</option>
           <option value="any" selected={f.promo === 'any'}>أي كود</option>
@@ -179,9 +187,10 @@ const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch
           {opts.promos.map((code) => <option value={code} selected={f.promo === code} dir="ltr">{code}</option>)}
         </select>
       </label>
-      <noscript><button class="btn btn--primary">اعرض</button></noscript>
-    </form>
-  </details>
+      </div>
+    </details>
+    <noscript><button class="btn btn--primary">اعرض</button></noscript>
+  </form>
 
   <div class="dhead">
     <p class="dperiod"><b>{periodText(r.a, r.b)}</b> <span class="hint">مقارنة بـ {periodText(r.pa, r.pb)}</span></p>
@@ -263,8 +272,10 @@ const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch
   </section>
 
   <p class="hint">دوس على أي سطر تحت عشان تفلتر الصفحة كلها بيه، ودوس تاني عشان تشيل الفلتر.</p>
+  {groups.map((group, gi) => {
+    const grid = (
   <div class="dgrid">
-    {sections.map((s) => (
+    {group.map((s) => (
       <section class={`card bars${s.wide ? ' bars--wide' : ''}`}>
         <h2>{s.title}</h2>
         {s.note && <p class="hint">{s.note}</p>}
@@ -285,6 +296,14 @@ const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch
       </section>
     ))}
   </div>
+    );
+    return gi === 0 ? grid : (
+      <details class="dmore dmore--lists" open={Boolean(f.grind || f.roast)}>
+        <summary>تفاصيل أكتر: الطحنة والتحميص والتحويجة</summary>
+        {grid}
+      </details>
+    );
+  })}
 
   <section class="card">
     <h2>أكتر العملاء شراء</h2>

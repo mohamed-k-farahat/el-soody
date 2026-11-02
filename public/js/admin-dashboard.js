@@ -14,8 +14,6 @@
       document.body.classList.add('is-loading');
       form.submit();
     });
-    // on phones the filters start folded
-    if (matchMedia('(max-width: 700px)').matches && !document.querySelector('.chip')) form.closest('details')?.removeAttribute('open');
   }
 
   // one tooltip for every chart; text goes in with textContent

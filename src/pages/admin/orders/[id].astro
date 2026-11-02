@@ -20,6 +20,8 @@ if (Astro.request.method === 'POST') {
   if (PAY_STATUSES.includes(pay) && payAllowed.includes(pay)) {
     await DB().prepare("UPDATE orders SET payment_status = ?, updated_at = datetime('now') WHERE id = ?").bind(pay, id).run();
   }
+  const test = form.get('test');
+  if (test === '0' || test === '1') await DB().prepare('UPDATE orders SET test = ? WHERE id = ?').bind(Number(test), id).run();
   return Astro.redirect(`/admin/orders/${id}?saved=1`, 303);
 }
 
@@ -30,7 +32,7 @@ const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أ
 ---
 <Admin title={`طلب ${order.code}`} active="orders">
   <div class="spread">
-    <h1>طلب <span dir="ltr">{order.code}</span> <span class={`st st--${order.status}`}>{STATUS_AR[order.status]}</span></h1>
+    <h1>طلب <span dir="ltr">{order.code}</span> <span class={`st st--${order.status}`}>{STATUS_AR[order.status]}</span>{order.test ? <span class="st st--test">تجربة</span> : ''}</h1>
     <div class="row no-print">
       <a class="btn" href="/admin">← كل الطلبات</a>
       <button class="btn" type="button" onclick="window.print()">اطبع</button>
@@ -91,5 +93,10 @@ const wa = `https://wa.me/${waNumber(order.phone)}?text=${encodeURIComponent(`أ
     {order.payment_method === 'online' && order.payment_status === 'paid' && (
       <p class="hint" style="margin-top:1rem">الدفع اتأكد من Paymob. لو رجّعت الفلوس من لوحة Paymob: <button class="btn btn--small" name="payment_status" value="refunded">سجّل إنها اترجعت</button></p>
     )}
+    <h2 style="margin-top:1.2rem">طلب تجربة؟</h2>
+    <p class="hint">طلبات التجربة بتفضل في قايمة الطلبات، بس مش بتتحسب في الإحصائيات.</p>
+    <div class="steps">
+      <button class="btn" name="test" value={order.test ? '0' : '1'}>{order.test ? 'ده طلب حقيقي، احسبه' : 'ده طلب تجربة، ماتحسبهوش'}</button>
+    </div>
   </form>
 </Admin>
