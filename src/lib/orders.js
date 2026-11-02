@@ -80,8 +80,8 @@ export async function createOrder(input) {
       name, phone, fulfilment === 'delivery' ? address : '', notes, lang,
       cart.subtotal, offers.deliveryFee, offers.total, offers.discount, offers.deliveryWaived, promo?.code || '', offers.welcome ? 1 : 0, device || '', branchId);
   const insertItem = DB().prepare(`
-    INSERT INTO order_items (order_id, product_id, item_id, name, details, size, qty, unit_price, line_total)
-    VALUES (${orderId}, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    INSERT INTO order_items (order_id, product_id, item_id, name, details, size, qty, unit_price, line_total, section, roast, grind_id, spice)
+    VALUES (${orderId}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   // one transaction: the order, its lines and its offer claims are saved together or not at all.
   // The claims hit unique keys if another order took the same one-time offer a moment earlier.
   const claims = [];
@@ -94,7 +94,7 @@ export async function createOrder(input) {
   try {
     await DB().batch([
       insertOrder,
-      ...cart.lines.map((l) => insertItem.bind(token, l.productId, l.item, l.name, l.details, l.size, l.qty, l.unit, l.total)),
+      ...cart.lines.map((l) => insertItem.bind(token, l.productId, l.item, l.name, l.details, l.size, l.qty, l.unit, l.total, l.section || '', l.roast || '', l.grind || 0, l.spice || 0)),
       ...claims,
     ]);
   } catch (e) {

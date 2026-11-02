@@ -1,0 +1,313 @@
+---
+// Dashboard: sales, orders and coffee sold for a period, sliced by the filters at the top.
+// Clicking a row in a breakdown filters the whole page by it (click again to remove).
+import Admin from '../../layouts/Admin.astro';
+import { loadDashboard, filterQuery, lineFilterActive, PRESETS, MEASURES, SCOPES, FULFILMENT, PAYMENT, SIZES, SECTIONS, ROASTS, WEEKDAYS } from '../../lib/dashboard.js';
+import { cairoTime } from '../../lib/admin.js';
+import { t } from '../../lib/i18n.js';
+
+const d = await loadDashboard(Astro.url.searchParams);
+const { f, opts, r, kpi } = d;
+const link = (changes) => `/admin/dashboard${filterQuery(f, changes)}`;
+
+// ---------- formatting ----------
+const num = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const money = (p) => `${num.format(Math.round((p || 0) / 100))} ج.م`;
+const kg = (g) => (g >= 1000 ? `${new Intl.NumberFormat('en-US', { maximumFractionDigits: g >= 100000 ? 0 : 1 }).format(g / 1000)} كيلو` : `${num.format(g || 0)} جم`);
+const value = (row) => (f.m === 'rev' ? row.rev || 0 : f.m === 'orders' ? row.orders || 0 : row.grams || 0);
+const show = (v) => (f.m === 'rev' ? money(v) : f.m === 'orders' ? `${num.format(v)} طلب` : kg(v));
+const dayFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const longFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const monthFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const dayName = (ymd) => dayFmt.format(Date.parse(ymd));
+const hourName = (h) => (h === 0 ? '12 ص' : h < 12 ? `${h} ص` : h === 12 ? '12 م' : `${h - 12} م`);
+const yearFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const periodText = (a, b) => (a === b ? longFmt.format(Date.parse(a))
+  : `من ${(a.slice(0, 4) === b.slice(0, 4) ? dayFmt : yearFmt).format(Date.parse(a))} لحد ${yearFmt.format(Date.parse(b))}`);
+
+// ---------- headline tiles ----------
+function delta(cur, prev, { invert = false, points = false } = {}) {
+  if (!prev && !cur) return { text: 'زي الفترة اللي قبلها', cls: '' };
+  if (!prev) return { text: 'الفترة اللي قبلها كانت صفر', cls: '' };
+  const change = points ? (cur - prev) * 100 : ((cur - prev) / prev) * 100;
+  if (Math.abs(change) < 0.5) return { text: 'زي الفترة اللي قبلها', cls: '' };
+  const up = change > 0;
+  return {
+    text: `${up ? '▲' : '▼'} ${num.format(Math.abs(change))}${points ? ' نقطة' : '%'} عن الفترة اللي قبلها`,
+    cls: up !== invert ? 'up' : 'down',
+  };
+}
+const c = kpi.cur, p = kpi.prev;
+const avg = (x) => (x.orders ? x.rev / x.orders : 0);
+const rate = (x) => (x.placed ? x.cancelled / x.placed : 0);
+const lineOnly = lineFilterActive(f);
+const tiles = [
+  { label: lineOnly ? 'مبيعات الأصناف المختارة' : 'المبيعات', value: money(c.rev), d: delta(c.rev, p.rev) },
+  { label: 'الطلبات', value: num.format(c.orders || 0), d: delta(c.orders, p.orders) },
+  { label: 'متوسط الطلب', value: money(avg(c)), d: delta(avg(c), avg(p)) },
+  { label: lineOnly ? 'كمية الأصناف المختارة' : 'البن والمنتجات المباعة', value: kg(c.grams), d: delta(c.grams, p.grams) },
+  { label: 'العملاء', value: num.format(c.customers || 0), d: delta(c.customers, p.customers), sub: `${num.format(kpi.repeat)} منهم طلبوا أكتر من مرة` },
+  { label: 'عملاء جداد', value: num.format(kpi.freshCur), d: delta(kpi.freshCur, kpi.freshPrev), sub: 'أول طلب ليهم من الموقع' },
+  { label: 'نسبة الإلغاء', value: `${num.format(rate(kpi.cancelCur) * 100)}%`, d: delta(rate(kpi.cancelCur), rate(kpi.cancelPrev), { invert: true, points: true }), sub: `${num.format(kpi.cancelCur.cancelled || 0)} من ${num.format(kpi.cancelCur.placed || 0)} طلب` },
+  { label: 'الخصومات', value: money(c.discount), d: delta(c.discount, p.discount, { invert: true }), sub: `${num.format(c.welcome || 0)} طلب أخد توصيل مجاني لأول مرة` },
+];
+
+// ---------- sales over time ----------
+const points = d.series.map(([key, row]) => {
+  let label, title;
+  if (r.grain === 'hour') { const [day, h] = key.split(' '); label = hourName(Number(h)); title = `${dayName(day)}، ${hourName(Number(h))}`; }
+  else if (r.grain === 'day') { label = dayName(key); title = longFmt.format(Date.parse(key)); }
+  else { label = monthFmt.format(Date.parse(`${key}-01`)); title = label; }
+  return { label, title, row, v: value(row) };
+});
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const mag = 10 ** Math.floor(Math.log10(v));
+  return [1, 2, 2.5, 5, 10].map((s) => s * mag).find((s) => s >= v);
+}
+const maxV = niceMax(Math.max(0, ...points.map((x) => x.v)));
+const ticks = [0, 0.25, 0.5, 0.75, 1].map((s) => s * maxV);
+const labelEvery = Math.max(1, Math.ceil(points.length / 7));
+const tipLines = (row) => [`المبيعات: ${money(row.rev)}`, `الطلبات: ${num.format(row.orders)}`, `الكمية: ${kg(row.grams)}`].join('\n');
+const total = points.reduce((s, x) => s + x.v, 0);
+const best = points.reduce((b, x) => (x.v > (b?.v || 0) ? x : b), null);
+
+// ---------- busy times ----------
+const heatMax = Math.max(0, ...d.heat.flat().map(value));
+const level = (v) => (v <= 0 || !heatMax ? 0 : Math.min(4, Math.ceil((v / heatMax) * 4)));
+
+// ---------- breakdowns ----------
+// param: the filter a row sets when clicked; key(row): its value for that filter (null = not clickable)
+function bars(name, param, key = (row) => row.k, limit = 12) {
+  const rows = d.breakdowns[name].map((row) => ({ ...row, v: value(row) })).filter((row) => row.v > 0 || row.orders > 0).sort((a, b) => b.v - a.v);
+  const sum = rows.reduce((s, row) => s + row.v, 0);
+  let shown = rows.slice(0, limit);
+  if (rows.length > limit) {
+    const rest = rows.slice(limit);
+    shown.push({ name: `الباقي (${rest.length})`, v: rest.reduce((s, row) => s + row.v, 0), orders: rest.reduce((s, row) => s + row.orders, 0), rev: rest.reduce((s, row) => s + row.rev, 0), grams: rest.reduce((s, row) => s + row.grams, 0), rest: true });
+  }
+  const max = Math.max(0, ...shown.map((row) => row.v));
+  return shown.map((row) => {
+    const k = param && !row.rest ? key(row) : null;
+    const active = k !== null && k !== undefined && String(f[param] ?? '') === String(k);
+    return {
+      ...row, share: sum ? row.v / sum : 0, width: max ? (row.v / max) * 100 : 0, active,
+      href: k === null || k === undefined ? null : link({ [param]: active ? null : k }),
+    };
+  });
+}
+const sections = [
+  { title: 'المنتجات', rows: bars('product', 'product'), wide: true },
+  { title: 'سادة ولا محوّج', rows: bars('section', 'section', (row) => row.k || null) },
+  { title: 'الوزن', rows: bars('size', 'size') },
+  { title: 'الطحنة', rows: bars('grind', 'grind', (row) => row.k || null) },
+  { title: 'التحميص', rows: bars('roast', 'roast', (row) => row.k || null) },
+  { title: 'إضافة التحويجة', rows: bars('spice', null), note: 'على البن السادة بس' },
+  { title: 'الاستلام', rows: bars('fulfilment', 'fulfilment') },
+  { title: 'فرع الاستلام', rows: bars('branch', 'branch', (row) => row.k || null) },
+  { title: 'طريقة الدفع', rows: bars('payment', 'payment') },
+  { title: 'أكواد الخصم', rows: bars('promo', 'promo', (row) => (row.k === '' ? 'none' : row.k === '*welcome' ? 'welcome' : row.k)), discount: true },
+  { title: 'حالة الطلبات', rows: bars('status', null), note: 'كل الحالات، حتى لو فلتر الطلبات مختار' },
+];
+
+// ---------- active filter chips ----------
+const nameOf = (list, id) => list.find((x) => x.id === id)?.name_ar;
+const chips = [
+  f.status !== 'valid' && { label: `الطلبات: ${SCOPES[f.status].label}`, href: link({ status: 'valid' }) },
+  f.fulfilment && { label: FULFILMENT[f.fulfilment], href: link({ fulfilment: null }) },
+  f.payment && { label: `الدفع: ${PAYMENT[f.payment]}`, href: link({ payment: null }) },
+  f.branch && { label: `فرع: ${nameOf(opts.branches, f.branch)}`, href: link({ branch: null }) },
+  f.product && { label: nameOf(opts.products, f.product), href: link({ product: null }) },
+  f.section && { label: t('ar', `section.${f.section}`), href: link({ section: null }) },
+  f.size && { label: SIZES[f.size], href: link({ size: null }) },
+  f.grind && { label: nameOf(opts.grinds, f.grind), href: link({ grind: null }) },
+  f.roast && { label: `تحميص ${t('ar', `roast.${f.roast}`)}`, href: link({ roast: null }) },
+  f.promo && { label: f.promo === 'any' ? 'بكود خصم' : f.promo === 'none' ? 'من غير كود' : f.promo === 'welcome' ? 'توصيل مجاني لأول طلب' : `كود ${f.promo}`, href: link({ promo: null }) },
+].filter(Boolean);
+const clearAll = link({ status: 'valid', fulfilment: null, payment: null, branch: null, product: null, section: null, size: null, grind: null, roast: null, promo: null });
+---
+<Admin title="الإحصائيات" active="dashboard">
+  <div class="spread">
+    <h1>الإحصائيات</h1>
+    <a class="btn btn--small" href={`/admin/dashboard.csv${filterQuery(f)}`} download>تنزيل الطلبات (Excel)</a>
+  </div>
+
+  <details class="dfilters card" open>
+    <summary>الفلاتر {chips.length > 0 && <span class="badge">{chips.length}</span>}</summary>
+    <form method="get" action="/admin/dashboard" id="dfilters">
+      <label>الفترة
+        <select name="range">{Object.entries(PRESETS).map(([k, v]) => <option value={k} selected={f.range === k}>{v}</option>)}</select>
+      </label>
+      <label class="dcustom" hidden={f.range !== 'custom'}>من<input type="date" name="from" value={r.a} max={d.today}></label>
+      <label class="dcustom" hidden={f.range !== 'custom'}>لحد<input type="date" name="to" value={r.b} max={d.today}></label>
+      <label>اعرض الأرقام بـ
+        <select name="m">{Object.entries(MEASURES).map(([k, v]) => <option value={k} selected={f.m === k}>{v}</option>)}</select>
+      </label>
+      <label>الطلبات
+        <select name="status">{Object.entries(SCOPES).map(([k, v]) => <option value={k} selected={f.status === k}>{v.label}</option>)}</select>
+      </label>
+      <label>الاستلام
+        <select name="fulfilment"><option value="">الكل</option>{Object.entries(FULFILMENT).map(([k, v]) => <option value={k} selected={f.fulfilment === k}>{v}</option>)}</select>
+      </label>
+      <label>فرع الاستلام
+        <select name="branch"><option value="">كل الفروع</option>{opts.branches.map((b) => <option value={b.id} selected={f.branch === b.id}>{b.name_ar}</option>)}</select>
+      </label>
+      <label>الدفع
+        <select name="payment"><option value="">الكل</option>{Object.entries(PAYMENT).map(([k, v]) => <option value={k} selected={f.payment === k}>{v}</option>)}</select>
+      </label>
+      <label>المنتج
+        <select name="product"><option value="">كل المنتجات</option>{opts.products.map((x) => <option value={x.id} selected={f.product === x.id}>{x.name_ar}</option>)}</select>
+      </label>
+      <label>سادة ولا محوّج
+        <select name="section"><option value="">الكل</option>{SECTIONS.map((k) => <option value={k} selected={f.section === k}>{t('ar', `section.${k}`)}</option>)}</select>
+      </label>
+      <label>الوزن
+        <select name="size"><option value="">كل الأوزان</option>{Object.entries(SIZES).map(([k, v]) => <option value={k} selected={String(f.size) === k}>{v}</option>)}</select>
+      </label>
+      <label>الطحنة
+        <select name="grind"><option value="">الكل</option>{opts.grinds.map((x) => <option value={x.id} selected={f.grind === x.id}>{x.name_ar}</option>)}</select>
+      </label>
+      <label>التحميص
+        <select name="roast"><option value="">الكل</option>{ROASTS.map((k) => <option value={k} selected={f.roast === k}>{t('ar', `roast.${k}`)}</option>)}</select>
+      </label>
+      <label>كود الخصم
+        <select name="promo">
+          <option value="">الكل</option>
+          <option value="any" selected={f.promo === 'any'}>أي كود</option>
+          <option value="none" selected={f.promo === 'none'}>من غير كود</option>
+          <option value="welcome" selected={f.promo === 'welcome'}>توصيل مجاني لأول طلب</option>
+          {opts.promos.map((code) => <option value={code} selected={f.promo === code} dir="ltr">{code}</option>)}
+        </select>
+      </label>
+      <noscript><button class="btn btn--primary">اعرض</button></noscript>
+    </form>
+  </details>
+
+  <div class="dhead">
+    <p class="dperiod"><b>{periodText(r.a, r.b)}</b> <span class="hint">مقارنة بـ {periodText(r.pa, r.pb)}</span></p>
+    {chips.length > 0 && (
+      <div class="chips">
+        {chips.map((x) => <a class="chip" href={x.href} title="شيل الفلتر ده">{x.label} <span aria-hidden="true">×</span><span class="sr">شيل الفلتر</span></a>)}
+        <a class="chip chip--clear" href={clearAll}>امسح كل الفلاتر</a>
+      </div>
+    )}
+  </div>
+  {lineOnly && <p class="hint dnote">المبيعات والكمية محسوبة على الأصناف المختارة بس، مش الطلب كله. عدد الطلبات هو الطلبات اللي فيها الأصناف دي.</p>}
+
+  <section class="kpis" aria-label="الأرقام الأساسية">
+    {tiles.map((x) => (
+      <div class="kpi">
+        <p class="kpi__label">{x.label}</p>
+        <p class="kpi__value">{x.value}</p>
+        <p class={`kpi__delta ${x.d.cls}`}>{x.d.text}</p>
+        {x.sub && <p class="kpi__sub">{x.sub}</p>}
+      </div>
+    ))}
+  </section>
+
+  <section class="card">
+    <div class="spread dcard__head">
+      <h2>{MEASURES[f.m]} {r.grain === 'hour' ? 'بالساعة' : r.grain === 'day' ? 'باليوم' : 'بالشهر'}</h2>
+      <p class="hint">الإجمالي {show(total)}{best && best.v > 0 && <>، وأعلى {r.grain === 'hour' ? 'ساعة' : r.grain === 'day' ? 'يوم' : 'شهر'}: {best.title} ({show(best.v)})</>}</p>
+    </div>
+    <div class="colchart" dir="ltr" style={`--n:${points.length}`}>
+      <div class="colchart__grid">
+        {ticks.map((v) => <div class="colchart__tick" style={`bottom:${(v / maxV) * 100}%`}><span>{f.m === 'rev' ? num.format(v / 100) : f.m === 'kg' ? `${num.format(v / 1000)}` : num.format(v)}</span></div>)}
+      </div>
+      <div class="colchart__plot">
+        {points.map((x) => (
+          <div class="col" tabindex="0" data-tip-title={x.title} data-tip={tipLines(x.row)} aria-label={`${x.title}: ${show(x.v)}`}>
+            <span class="col__bar" style={`height:${(x.v / maxV) * 100}%`}></span>
+          </div>
+        ))}
+      </div>
+      <div class="colchart__x">
+        {/* every other label hides on phones (.alt) so they don't run into each other */}
+        {points.map((x, i) => <span class={(i / labelEvery) % 2 === 1 ? 'alt' : undefined}>{i % labelEvery === 0 ? x.label : ''}</span>)}
+      </div>
+    </div>
+    <p class="hint">{f.m === 'rev' ? 'الأرقام على الجنب بالجنيه.' : f.m === 'kg' ? 'الأرقام على الجنب بالكيلو.' : ''} وقّف على أي عمود تشوف تفاصيله.</p>
+    <details class="dtable">
+      <summary>اعرض الأرقام كجدول</summary>
+      <div class="tablewrap">
+        <table class="t">
+          <thead><tr><th>{r.grain === 'hour' ? 'الساعة' : r.grain === 'day' ? 'اليوم' : 'الشهر'}</th><th>المبيعات</th><th>الطلبات</th><th>الكمية</th></tr></thead>
+          <tbody>{points.filter((x) => x.row.orders > 0).map((x) => <tr><td>{x.title}</td><td>{money(x.row.rev)}</td><td>{num.format(x.row.orders)}</td><td>{kg(x.row.grams)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <div class="spread dcard__head">
+      <h2>أوقات الزحمة</h2>
+      <p class="hint">{MEASURES[f.m]} حسب اليوم والساعة، بتوقيت القاهرة</p>
+    </div>
+    <div class="heatwrap">
+      <div class="heat" dir="ltr">
+        <span></span>
+        {Array.from({ length: 24 }, (_, h) => <span class="heat__h">{h % 3 === 0 ? hourName(h) : ''}</span>)}
+        {d.heat.map((row, wd) => (
+          <>
+            <span class="heat__d">{WEEKDAYS[wd]}</span>
+            {row.map((cell, h) => (
+              <span class={`heat__c l${level(value(cell))}`} tabindex={cell.orders ? 0 : undefined}
+                data-tip-title={`${WEEKDAYS[wd]}، ${hourName(h)}`} data-tip={tipLines(cell)}
+                aria-label={`${WEEKDAYS[wd]} ${hourName(h)}: ${show(value(cell))}`}></span>
+            ))}
+          </>
+        ))}
+      </div>
+    </div>
+    <p class="heat__legend hint">أقل <span class="heat__c l1"></span><span class="heat__c l2"></span><span class="heat__c l3"></span><span class="heat__c l4"></span> أكتر</p>
+  </section>
+
+  <p class="hint">دوس على أي سطر تحت عشان تفلتر الصفحة كلها بيه، ودوس تاني عشان تشيل الفلتر.</p>
+  <div class="dgrid">
+    {sections.map((s) => (
+      <section class={`card bars${s.wide ? ' bars--wide' : ''}`}>
+        <h2>{s.title}</h2>
+        {s.note && <p class="hint">{s.note}</p>}
+        {s.rows.length === 0 ? <p class="hint">مفيش بيانات في الفترة دي.</p> : (
+          <ul>
+            {s.rows.map((row) => {
+              const inner = (
+                <>
+                  <span class="bars__name">{row.active && <span class="bars__check" aria-hidden="true">✓</span>}{row.name}</span>
+                  <span class="bars__track"><span class="bars__fill" style={`width:${row.width}%`}></span></span>
+                  <span class="bars__val">{show(row.v)} <span class="hint" dir="ltr">{num.format(row.share * 100)}%</span>{s.discount && row.discount > 0 && <span class="hint bars__sub">خصم {money(row.discount)}</span>}</span>
+                </>
+              );
+              return <li class={row.active ? 'is-active' : ''}>{row.href ? <a href={row.href} data-tip-title={row.name} data-tip={tipLines(row)}>{inner}</a> : <div data-tip-title={row.name} data-tip={tipLines(row)}>{inner}</div>}</li>;
+            })}
+          </ul>
+        )}
+      </section>
+    ))}
+  </div>
+
+  <section class="card">
+    <h2>أكتر العملاء شراء</h2>
+    {d.customers.length === 0 ? <p class="hint">مفيش طلبات في الفترة دي.</p> : (
+      <div class="tablewrap">
+        <table class="t t--stack">
+          <thead><tr><th>العميل</th><th>الطلبات</th><th>المبيعات</th><th>الكمية</th><th>آخر طلب</th></tr></thead>
+          <tbody>
+            {d.customers.map((x) => (
+              <tr>
+                <td class="lead"><div>{x.name}<br><a class="hint" dir="ltr" href={`/admin?tab=all&q=${encodeURIComponent(x.phone)}`}>{x.phone}</a></div></td>
+                <td data-label="الطلبات">{num.format(x.orders)}</td>
+                <td data-label="المبيعات"><b>{money(x.rev)}</b></td>
+                <td data-label="الكمية">{kg(x.grams)}</td>
+                <td data-label="آخر طلب">{cairoTime(x.last)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+
+  <div class="tip" id="tip" role="tooltip" hidden><b></b><span></span></div>
+  <script src="/js/admin-dashboard.js" defer></script>
+</Admin>

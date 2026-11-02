@@ -58,7 +58,7 @@ export async function priceCart(rawLines, { fulfilment = 'pickup', lang = 'ar' }
     ].filter(Boolean).join(lang === 'ar' ? '، ' : ', ');
 
     lines.push({
-      key, item: it.id, productId: it.pid, slug: it.slug, image: it.thumb,
+      key, item: it.id, productId: it.pid, slug: it.slug, image: it.thumb, section: it.section,
       name: loc(it, 'name', lang), details, size, roast, grind: grindId, spice,
       qty, unit: unit + spice, total: (unit + spice) * qty,
     });
