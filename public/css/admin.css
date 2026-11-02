@@ -128,8 +128,18 @@ details.box summary { cursor: pointer; font-weight: 700; }
   .hide-sm { display: none !important; }
   .show-sm { display: initial; }
 
-  /* top bar: brand and logout on the first line, all sections as equal tabs on the second */
-  .abar { padding: .5rem .75rem .6rem; gap: .5rem; }
+  /* top bar: brand and logout on the first line, all sections as equal tabs on the second.
+     It scrolls away with the page instead of staying pinned, so it doesn't cover a fifth of the screen. */
+  .abar { position: static; padding: .5rem .75rem .6rem; gap: .5rem; }
+
+  /* 16px text in fields: iPhones zoom the page in when a field with smaller text is tapped */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea,
+  .dfilters form select, .dfilters form input { font-size: 16px; }
+  /* bigger tap targets */
+  .check input, input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
+  .check { min-height: 40px; }
+  .t td a, .t--stack td.lead a { display: inline-block; padding-block: .35rem; }
+  summary { padding-block: .5rem; }
   .abar__brand { flex: 1; }
   .abar__nav { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; overflow: visible; }
   .abar__nav a { padding: .4rem .1rem; text-align: center; font-size: .82rem; border-radius: 10px; background: rgba(255,255,255,.05); }
